@@ -374,6 +374,7 @@
     stepCalibrate.classList.add("hidden");
     stepPlay.classList.remove("hidden");
     mangoBadge.style.display = "none";
+    send({ type: "start-game" });
   });
 
   recalibrateBtn.addEventListener("click", () => {
