@@ -9,6 +9,11 @@ const app = express();
 // Serve static files from public directory
 app.use(express.static(path.join(__dirname, "public")));
 
+// Redirect root route to laptop.html
+app.get("/", (req, res) => {
+    res.redirect("/laptop.html");
+});
+
 // Use Render/cloud PORT variable or default to 3000 locally
 const PORT = process.env.PORT || 3000;
 
