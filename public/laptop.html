@@ -725,8 +725,8 @@
   }
 
   function crosshairPos() {
-    currentAimX += (targetAimX - currentAimX) * 0.20;
-    currentAimY += (targetAimY - currentAimY) * 0.20;
+    currentAimX += (targetAimX - currentAimX) * 0.35;
+    currentAimY += (targetAimY - currentAimY) * 0.35;
 
     const margin = 60;
     const cx = ((currentAimX + 1) / 2) * (canvas.width - margin * 2) + margin;

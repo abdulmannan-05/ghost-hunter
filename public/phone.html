@@ -424,14 +424,24 @@
       targetX = Math.max(-1, Math.min(1, normX));
       targetY = Math.max(-1, Math.min(1, normY));
 
-      smoothX += (targetX - smoothX) * LERP_FACTOR;
-      smoothY += (targetY - smoothY) * LERP_FACTOR;
+      // Fast single-pass responsive smoothing
+      smoothX += (targetX - smoothX) * 0.35;
+      smoothY += (targetY - smoothY) * 0.35;
 
-      tiltReadout.textContent = `aim: X=${smoothX.toFixed(2)}, Y=${smoothY.toFixed(2)}`;
-      send({ type: "aim", x: smoothX, y: smoothY });
+      const now = performance.now();
+      // Throttle network sends to ~35Hz (every 28ms) to prevent mobile TCP queueing lag
+      if (now - lastAimSendTime > 28) {
+        lastAimSendTime = now;
+        const sendX = Math.round(smoothX * 1000) / 1000;
+        const sendY = Math.round(smoothY * 1000) / 1000;
+        tiltReadout.textContent = `aim: X=${sendX.toFixed(2)}, Y=${sendY.toFixed(2)}`;
+        send({ type: "aim", x: sendX, y: sendY });
+      }
     }
     requestAnimationFrame(loop);
   }
+
+  let lastAimSendTime = 0;
   requestAnimationFrame(loop);
 
   // --- PAUSE & RESUME ---
