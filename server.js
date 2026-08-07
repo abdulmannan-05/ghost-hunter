@@ -148,8 +148,8 @@ wss.on("connection", (ws) => {
     });
 });
 
-server.listen(PORT, () => {
-    console.log(`Ghost Hunter relay server listening on port ${PORT}`);
+server.listen(PORT, "0.0.0.0", () => {
+    console.log(`Ghost Hunter relay server listening on port ${PORT} (0.0.0.0)`);
     const localIps = getLocalIPs();
     if (localIps.length) {
         console.log(`Local network URL: http://${localIps[0]}:${PORT}/laptop.html`);
