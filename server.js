@@ -1,28 +1,31 @@
-
-// Ghost Hunter — Phase 0
-// A tiny relay server: pairs one "laptop" (the game/display) with one "phone"
-// (the controller) using a short room code, and forwards messages between them.
-// Neither client needs to know the other's IP — everyone only talks to this server.
-
 const express = require("express");
 const http = require("http");
-const https = require("https");
 const { WebSocketServer } = require("ws");
 const os = require("os");
 const path = require("path");
-const selfsigned = require("selfsigned");
-
-const PORT = process.env.PORT || 3000;
 
 const app = express();
+
+// Serve static files from public directory
 app.use(express.static(path.join(__dirname, "public")));
+
+// Use Render/cloud PORT variable or default to 3000 locally
+const PORT = process.env.PORT || 3000;
+
+// Create standard HTTP server (Render/cloud platforms handle SSL automatically)
+const server = http.createServer(app);
+
+// Attach WebSocket server to the HTTP server
+const wss = new WebSocketServer({ server });
+
+// room code -> { laptop: ws|null, phone: ws|null }
+const rooms = new Map();
 
 function getLocalIPs() {
     const ifaces = os.networkInterfaces();
     const ips = [];
     for (const name of Object.keys(ifaces)) {
         const lower = name.toLowerCase();
-        // Ignore virtual WSL, Hyper-V, Docker, and VMware interfaces
         if (
             lower.includes("vethernet") ||
             lower.includes("wsl") ||
@@ -37,7 +40,6 @@ function getLocalIPs() {
             if (iface.family === "IPv4" && !iface.internal) ips.push(iface.address);
         }
     }
-    // Fallback if all adapters were filtered
     if (!ips.length) {
         for (const name of Object.keys(ifaces)) {
             for (const iface of ifaces[name]) {
@@ -45,7 +47,6 @@ function getLocalIPs() {
             }
         }
     }
-    // Prioritize standard 192.168.x.x Wi-Fi/LAN IPs first
     ips.sort((a, b) => {
         if (a.startsWith("192.168.") && !b.startsWith("192.168.")) return -1;
         if (!a.startsWith("192.168.") && b.startsWith("192.168.")) return 1;
@@ -54,51 +55,7 @@ function getLocalIPs() {
     return ips;
 }
 
-async function startServer() {
-    const localIps = getLocalIPs();
-
-    // Generate self-signed SSL certificate with SAN (Subject Alternative Names) for Chrome TLS 1.3 compatibility
-    const altNames = [
-        { type: 2, value: "localhost" },
-        { type: 7, ip: "127.0.0.1" },
-        ...localIps.map(ip => ({ type: 7, ip }))
-    ];
-
-    const pki = await selfsigned.generate(
-        [{ name: "commonName", value: "localhost" }],
-        {
-            keySize: 2048,
-            algorithm: "sha256",
-            days: 365,
-            extensions: [
-                { name: "basicConstraints", cA: true },
-                {
-                    name: "keyUsage",
-                    keyCertSign: true,
-                    digitalSignature: true,
-                    keyEncipherment: true
-                },
-                {
-                    name: "extKeyUsage",
-                    serverAuth: true,
-                    clientAuth: true
-                },
-                {
-                    name: "subjectAltName",
-                    altNames: altNames
-                }
-            ]
-        }
-    );
-
-    const server = https.createServer({ key: pki.private, cert: pki.cert }, app);
-    const wss = new WebSocketServer({ server });
-
-// room code -> { laptop: ws|null, phone: ws|null }
-const rooms = new Map();
-
 function makeRoomCode() {
-    // short, easy to glance-verify, avoids ambiguous chars (0/O, 1/I)
     const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
     let code;
     do {
@@ -132,7 +89,7 @@ wss.on("connection", (ws) => {
             return;
         }
 
-        // --- 1. LAPTOP registers itself and gets a fresh room code ---
+        // 1. LAPTOP registers itself and gets a fresh room code
         if (msg.type === "register-laptop") {
             const code = makeRoomCode();
             ws.role = "laptop";
@@ -144,7 +101,7 @@ wss.on("connection", (ws) => {
             return;
         }
 
-        // --- 2. PHONE joins an existing room by code (from the QR link) ---
+        // 2. PHONE joins an existing room by code
         if (msg.type === "register-phone") {
             const code = (msg.room || "").toUpperCase();
             const room = rooms.get(code);
@@ -165,7 +122,7 @@ wss.on("connection", (ws) => {
             return;
         }
 
-        // --- 3. Anything else is game traffic: relay to whoever this client is paired with ---
+        // 3. Relay game traffic between laptop and phone
         const room = rooms.get(ws.roomCode);
         if (!room) return;
 
@@ -181,7 +138,6 @@ wss.on("connection", (ws) => {
         if (ws.role === "laptop") {
             room.laptop = null;
             send(room.phone, { type: "peer-disconnected", who: "laptop" });
-            // Laptop leaving ends the room — the QR code is no longer valid.
             rooms.delete(ws.roomCode);
             console.log(`[room ${ws.roomCode}] laptop left, room closed`);
         } else if (ws.role === "phone") {
@@ -192,22 +148,10 @@ wss.on("connection", (ws) => {
     });
 });
 
-    server.listen(PORT, () => {
-        console.log(`\n🔒 Ghost Hunter relay server running with HTTPS (required for motion sensors).`);
-        console.log(`Open the laptop page on THIS machine at:`);
-        console.log(`  https://localhost:${PORT}/laptop.html\n`);
-        if (localIps.length) {
-            console.log(`On the same WiFi, open the laptop page using one of these:`);
-            localIps.forEach((ip) => console.log(`  https://${ip}:${PORT}/laptop.html`));
-        } else {
-            console.log(`Could not detect a LAN IP — make sure the laptop and phone are on the same WiFi.`);
-        }
-        console.log(`\n⚠️ NOTE: Because this uses a self-signed certificate, your browser/phone will show a security warning.`);
-        console.log(`Simply tap "Advanced" -> "Proceed / Continue to site" on your phone to allow motion sensors.`);
-        console.log("");
-    });
-}
-
-startServer().catch((err) => {
-    console.error("Failed to start server:", err);
+server.listen(PORT, () => {
+    console.log(`Ghost Hunter relay server listening on port ${PORT}`);
+    const localIps = getLocalIPs();
+    if (localIps.length) {
+        console.log(`Local network URL: http://${localIps[0]}:${PORT}/laptop.html`);
+    }
 });
