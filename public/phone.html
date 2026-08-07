@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Ghost Hunter — Controller</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#07070c; --panel:#12121c; --line:#2a2a3d;
+    --ghost:#63c8ff; --red:#ff2530; --ok:#4ade80; --ink:#9aa0b4;
+    --gold:#ffd166; --mango:#ffb347;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent; user-select:none}
+  html,body{height:100%}
+  body{
+    margin:0; background:var(--bg); color:#eaf4ff;
+    font-family:'Outfit','Helvetica Neue',Arial,sans-serif;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    padding:20px; text-align:center; touch-action:none;
+  }
+  h1{font-size:22px; font-weight:800; margin:0 0 4px;
+    background:linear-gradient(135deg,#63c8ff,#a78bfa); -webkit-background-clip:text; -webkit-text-fill-color:transparent}
+  .sub{color:var(--ink); font-size:13px; margin-bottom:22px}
+
+  #status-line{
+    display:inline-flex; align-items:center; gap:8px; font-size:11px;
+    letter-spacing:1.5px; text-transform:uppercase; color:var(--ink);
+    margin-bottom:22px; padding:6px 16px; border:1px solid var(--line); border-radius:999px;
+  }
+  #status-dot{width:9px; height:9px; border-radius:50%; background:var(--red); box-shadow:0 0 8px var(--red);
+    transition:background 200ms, box-shadow 200ms}
+  #status-dot.ok{background:var(--ok); box-shadow:0 0 8px var(--ok)}
+  #status-dot.pending{background:#f5c542; box-shadow:0 0 8px #f5c542}
+
+  button{
+    font-size:17px; font-weight:700; letter-spacing:.5px; color:#0c0c14;
+    background:var(--ghost); border:none; border-radius:12px;
+    padding:18px 28px; width:100%; max-width:320px; margin-bottom:14px;
+    box-shadow:0 6px 0 #3f86d6; transition:transform .05s;
+    font-family:'Outfit','Helvetica Neue',Arial,sans-serif;
+  }
+  button:active{transform:translateY(4px); box-shadow:0 2px 0 #3f86d6}
+  button.secondary{background:#1c1c2a; color:#eaf4ff; box-shadow:0 6px 0 #05050a}
+  button.secondary:active{box-shadow:0 2px 0 #05050a}
+  button:disabled{opacity:.4}
+
+  #fire-btn{
+    width:170px; height:170px; border-radius:50%; background:var(--red);
+    box-shadow:0 8px 0 #a3131c; font-size:22px; margin-top:12px;
+  }
+  #fire-btn:active{transform:translateY(6px); box-shadow:0 2px 0 #a3131c}
+
+  #tilt-readout{
+    font-family:monospace; font-size:12px; color:var(--ink); margin-bottom:10px;
+  }
+  .hidden{display:none}
+
+  /* NAME INPUT */
+  #name-input{
+    font-size:20px; font-weight:700; text-align:center; letter-spacing:2px;
+    background:var(--panel); color:#eaf4ff; border:2px solid var(--line);
+    border-radius:12px; padding:14px 20px; width:100%; max-width:280px;
+    margin-bottom:16px; outline:none; transition:border-color 200ms;
+    font-family:'Outfit','Helvetica Neue',Arial,sans-serif;
+  }
+  #name-input:focus{border-color:var(--ghost)}
+  #name-input::placeholder{color:var(--ink); opacity:.6}
+
+  /* MANGO BADGE */
+  #mango-badge{
+    display:none; background:linear-gradient(135deg,#ffb347,#ff6f00);
+    color:#1a0e00; font-weight:800; font-size:14px; letter-spacing:1px;
+    padding:8px 16px; border-radius:999px; margin-bottom:14px;
+    animation:mangoPulse 1s ease-in-out infinite;
+  }
+  @keyframes mangoPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
+</style>
+</head>
+<body>
+  <h1>👻 GHOST HUNTER</h1>
+  <div class="sub">Event Controller</div>
+
+  <div id="http-warning" class="hidden" style="background:#3b1418; border:1px solid var(--red); color:#ffbcbc; padding:12px; border-radius:10px; font-size:13px; margin-bottom:16px; max-width:320px; text-align:left;">
+    <strong>⚠️ Sensors Blocked (HTTP)</strong><br>
+    Mobile browsers block motion sensors on HTTP.<br><br>
+    <button id="switch-https-btn" style="background:var(--red); color:#fff; padding:10px; font-size:14px; margin:4px 0 0; box-shadow:none;">Switch to HTTPS 🔒</button>
+  </div>
+
+  <div id="status-line"><span id="status-dot"></span><span id="status-text">Connecting…</span></div>
+
+  <!-- STEP: NAME ENTRY -->
+  <div id="step-name">
+    <p style="color:var(--ink); font-size:13px; max-width:280px; margin-bottom:14px;">Enter your hunter name to join the battle:</p>
+    <input type="text" id="name-input" placeholder="Your Name" maxlength="16" autocomplete="off" spellcheck="false">
+    <button id="name-btn">START HUNTING 🎯</button>
+  </div>
+
+  <!-- STEP: PERMISSION -->
+  <div id="step-permission" class="hidden">
+    <button id="start-btn">Enable Motion Sensors</button>
+  </div>
+
+  <!-- STEP: CALIBRATE -->
+  <div id="step-calibrate" class="hidden">
+    <p style="color:var(--ink); font-size:13px; max-width:280px;">Point your phone's camera side at the laptop screen, then tap calibrate.</p>
+    <div id="sensor-indicator" style="font-size:12px; color:#f5c542; margin-bottom:14px; font-family:monospace;">Waiting for sensor data…</div>
+    <button id="calibrate-btn" class="secondary">🎯 Calibrate center</button>
+  </div>
+
+  <!-- STEP: PLAY -->
+  <div id="step-play" class="hidden">
+    <div id="mango-badge">🥭 MANGO TARGET REACHED!</div>
+
+    <div id="mini-hud" style="display:flex; gap:20px; justify-content:center; margin-bottom:12px; font-size:14px; color:var(--ink); letter-spacing:1px; background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:8px 16px; width:100%; max-width:320px;">
+      <span>❤️ <b id="mini-health" style="color:#4ade80">100</b></span>
+      <span>🔫 <b id="mini-ammo" style="color:var(--ghost)">5</b></span>
+      <span>👻 <b id="mini-score" style="color:var(--gold)">0</b></span>
+    </div>
+
+    <div id="tilt-readout">aim: X=0.00, Y=0.00</div>
+
+    <div style="background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:12px 16px; margin-bottom:14px; width:100%; max-width:320px; text-align:left;">
+      <div style="display:flex; justify-content:space-between; font-size:12px; color:var(--ink); margin-bottom:6px;">
+        <span>Sensitivity:</span>
+        <span id="sens-val" style="color:var(--ghost); font-weight:bold;">1.5x</span>
+      </div>
+      <input type="range" id="sens-slider" min="0.5" max="6.0" step="0.1" value="1.5" style="width:100%; cursor:pointer; margin-bottom:10px;">
+
+      <div style="display:flex; justify-content:space-between; font-size:12px; color:#eaf4ff;">
+        <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
+          <input type="checkbox" id="invert-x-check"> Flip Left/Right
+        </label>
+        <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
+          <input type="checkbox" id="invert-y-check"> Flip Up/Down
+        </label>
+      </div>
+    </div>
+
+    <button id="fire-btn">FIRE</button>
+    <div style="display:flex; gap:10px; justify-content:center; margin-top:14px; width:100%; max-width:320px;">
+      <button id="pause-btn" class="secondary" style="flex:1; margin-bottom:0; background:#242438;">⏸️ Pause</button>
+      <button id="recalibrate-btn" class="secondary" style="flex:1; margin-bottom:0;">🎯 Calibrate</button>
+    </div>
+  </div>
+
+  <!-- STEP: GAME OVER -->
+  <div id="step-gameover" class="hidden">
+    <div id="gameover-title" style="font-size:20px; font-weight:800; color:var(--red); letter-spacing:2px; margin-bottom:6px;">YOU DIDN'T SURVIVE</div>
+    <div style="font-size:13px; color:var(--ink); margin-bottom:6px;">Final Score</div>
+    <div id="final-score" style="font-size:54px; font-weight:800; color:var(--ghost); margin-bottom:24px;">0</div>
+    <button id="play-again-btn">PLAY AGAIN 🔄</button>
+  </div>
+
+<script>
+  const statusDot = document.getElementById("status-dot");
+  const statusText = document.getElementById("status-text");
+  const httpWarning = document.getElementById("http-warning");
+  const switchHttpsBtn = document.getElementById("switch-https-btn");
+  const stepName = document.getElementById("step-name");
+  const nameInput = document.getElementById("name-input");
+  const nameBtn = document.getElementById("name-btn");
+  const stepPermission = document.getElementById("step-permission");
+  const stepCalibrate = document.getElementById("step-calibrate");
+  const stepPlay = document.getElementById("step-play");
+  const stepGameover = document.getElementById("step-gameover");
+  const startBtn = document.getElementById("start-btn");
+  const calibrateBtn = document.getElementById("calibrate-btn");
+  const recalibrateBtn = document.getElementById("recalibrate-btn");
+  const fireBtn = document.getElementById("fire-btn");
+  const playAgainBtn = document.getElementById("play-again-btn");
+  const tiltReadout = document.getElementById("tilt-readout");
+  const sensorIndicator = document.getElementById("sensor-indicator");
+  const sensSlider = document.getElementById("sens-slider");
+  const sensVal = document.getElementById("sens-val");
+  const invertXCheck = document.getElementById("invert-x-check");
+  const invertYCheck = document.getElementById("invert-y-check");
+  const finalScoreEl = document.getElementById("final-score");
+  const miniHealthEl = document.getElementById("mini-health");
+  const miniAmmoEl = document.getElementById("mini-ammo");
+  const miniScoreEl = document.getElementById("mini-score");
+  const mangoBadge = document.getElementById("mango-badge");
+  const gameoverTitle = document.getElementById("gameover-title");
+
+  // Phone audio & haptics
+  const shootSound = new Audio("assets/audio/shoot.wav");
+  shootSound.preload = "auto";
+  shootSound.volume = 0.6;
+
+  if (location.protocol !== "https:" && location.hostname !== "localhost" && location.hostname !== "127.0.0.1") {
+    httpWarning.classList.remove("hidden");
+    switchHttpsBtn.addEventListener("click", () => { location.protocol = "https:"; });
+  }
+
+  let userSensitivity = 1.5;
+  let invertX = false;
+  let invertY = false;
+  let playerName = "Hunter";
+
+  sensSlider.addEventListener("input", (e) => {
+    userSensitivity = parseFloat(e.target.value);
+    sensVal.textContent = userSensitivity.toFixed(1) + "x";
+  });
+  invertXCheck.addEventListener("change", (e) => invertX = e.target.checked);
+  invertYCheck.addEventListener("change", (e) => invertY = e.target.checked);
+
+  function setStatus(state, text) {
+    statusDot.className = state;
+    statusText.textContent = text;
+  }
+
+  const params = new URLSearchParams(location.search);
+  const room = (params.get("room") || "").toUpperCase();
+
+  if (!room) {
+    setStatus("", "No room code in link. Scan the QR again.");
+  }
+
+  const wsProtocol = location.protocol === "https:" ? "wss" : "ws";
+  const ws = new WebSocket(`${wsProtocol}://${location.host}`);
+
+  ws.addEventListener("open", () => {
+    setStatus("pending", "Joining room " + room + "…");
+    ws.send(JSON.stringify({ type: "register-phone", room }));
+  });
+
+  ws.addEventListener("close", () => setStatus("", "Disconnected. Refresh to retry."));
+
+  ws.addEventListener("message", (event) => {
+    const msg = JSON.parse(event.data);
+    if (msg.type === "join-failed") {
+      setStatus("", msg.reason || "Could not join room.");
+    }
+    if (msg.type === "joined") {
+      setStatus("pending", `Joined room ${msg.room} — waiting for laptop…`);
+    }
+    if (msg.type === "paired") {
+      setStatus("ok", "Paired with laptop ✅");
+    }
+    if (msg.type === "peer-disconnected" && msg.who === "laptop") {
+      setStatus("pending", "Laptop disconnected.");
+    }
+    if (msg.type === "game-over") {
+      finalScoreEl.textContent = msg.score;
+      gameoverTitle.textContent = msg.win ? "🥭 TARGET REACHED!" : "YOU DIDN'T SURVIVE";
+      gameoverTitle.style.color = msg.win ? "var(--mango)" : "var(--red)";
+      stepPlay.classList.add("hidden");
+      stepGameover.classList.remove("hidden");
+      if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
+    }
+    if (msg.type === "mango-reached") {
+      mangoBadge.style.display = "block";
+      if (navigator.vibrate) navigator.vibrate([80, 40, 80, 40, 150]);
+    }
+    if (msg.type === "state") {
+      if (typeof msg.health === "number") {
+        miniHealthEl.textContent = msg.health;
+        miniHealthEl.style.color = msg.health <= 30 ? "var(--red)" : (msg.health <= 60 ? "#f5c542" : "#4ade80");
+      }
+      if (typeof msg.ammo === "number") {
+        miniAmmoEl.textContent = msg.reloading ? "⏳" : msg.ammo;
+        miniAmmoEl.style.color = msg.reloading ? "var(--red)" : "var(--ghost)";
+      }
+      if (typeof msg.score === "number") {
+        miniScoreEl.textContent = msg.score;
+      }
+    }
+  });
+
+  function send(msg) {
+    if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(msg));
+  }
+
+  // --- STEP: NAME ENTRY ---
+  const nameErrorEl = document.createElement("div");
+  nameErrorEl.style.cssText = "color:var(--red); font-size:12px; margin-bottom:10px; display:none;";
+  stepName.insertBefore(nameErrorEl, nameInput);
+
+  nameBtn.addEventListener("click", () => {
+    const val = (nameInput.value || "").trim();
+    if (!val) {
+      nameInput.style.borderColor = "var(--red)";
+      nameErrorEl.textContent = "⚠️ Please enter your name to start!";
+      nameErrorEl.style.display = "block";
+      nameInput.focus();
+      return;
+    }
+    nameErrorEl.style.display = "none";
+    nameInput.style.borderColor = "var(--ghost)";
+    playerName = val.slice(0, 16);
+    stepName.classList.add("hidden");
+    stepPermission.classList.remove("hidden");
+    send({ type: "set-name", name: playerName });
+  });
+  nameInput.addEventListener("input", () => {
+    if ((nameInput.value || "").trim()) {
+      nameErrorEl.style.display = "none";
+      nameInput.style.borderColor = "var(--ghost)";
+    }
+  });
+  nameInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") nameBtn.click();
+  });
+
+  // --- STEP: PERMISSION ---
+  startBtn.addEventListener("click", async () => {
+    try {
+      if (typeof DeviceOrientationEvent !== "undefined" &&
+          typeof DeviceOrientationEvent.requestPermission === "function") {
+        const result = await DeviceOrientationEvent.requestPermission();
+        if (result !== "granted") {
+          alert("Motion access denied — reload page and allow motion sensors.");
+          return;
+        }
+      }
+      if (typeof DeviceMotionEvent !== "undefined" &&
+          typeof DeviceMotionEvent.requestPermission === "function") {
+        await DeviceMotionEvent.requestPermission();
+      }
+      send({ type: "hello", text: "phone ready" });
+      stepPermission.classList.add("hidden");
+      stepCalibrate.classList.remove("hidden");
+      attachSensorListeners();
+    } catch (err) {
+      alert("Couldn't access motion sensors: " + err.message);
+    }
+  });
+
+  // --- SENSORS ---
+  let center = { alpha: 0, beta: 0, gamma: 0 };
+  let haveOrientation = false;
+  let latest = { alpha: 0, beta: 0, gamma: 0 };
+
+  function updateSensorData(a, b, g) {
+    if (b === null || g === null || isNaN(b) || isNaN(g)) return;
+    latest = { alpha: a || 0, beta: b, gamma: g };
+    haveOrientation = true;
+    if (sensorIndicator) {
+      sensorIndicator.style.color = "var(--ok)";
+      sensorIndicator.textContent = `Sensors Active ✅ (β: ${b.toFixed(1)}°, γ: ${g.toFixed(1)}°)`;
+    }
+  }
+
+  function attachSensorListeners() {
+    window.addEventListener("deviceorientation", (e) => {
+      if (e.beta !== null && e.gamma !== null) updateSensorData(e.alpha, e.beta, e.gamma);
+    }, true);
+
+    window.addEventListener("deviceorientationabsolute", (e) => {
+      if (!haveOrientation && e.beta !== null && e.gamma !== null) updateSensorData(e.alpha, e.beta, e.gamma);
+    }, true);
+
+    window.addEventListener("devicemotion", (e) => {
+      if (!haveOrientation && e.accelerationIncludingGravity) {
+        const acc = e.accelerationIncludingGravity;
+        if (acc.x !== null && acc.y !== null && acc.z !== null) {
+          const roll = Math.atan2(acc.x, acc.z) * (180 / Math.PI);
+          const pitch = Math.atan2(acc.y, acc.z) * (180 / Math.PI);
+          updateSensorData(0, pitch, roll);
+        }
+      }
+    }, true);
+  }
+
+  attachSensorListeners();
+
+  // --- CALIBRATE ---
+  calibrateBtn.addEventListener("click", () => {
+    if (!haveOrientation) {
+      alert("No motion data yet — make sure you are using HTTPS and move your phone slightly.");
+      return;
+    }
+    center = { ...latest };
+    stepCalibrate.classList.add("hidden");
+    stepPlay.classList.remove("hidden");
+    mangoBadge.style.display = "none";
+  });
+
+  recalibrateBtn.addEventListener("click", () => {
+    stepPlay.classList.add("hidden");
+    stepCalibrate.classList.remove("hidden");
+  });
+
+  // --- GYRO LOOP ---
+  function diffAngle(a, b) {
+    let d = (a - b) % 360;
+    if (d < -180) d += 360;
+    if (d > 180) d -= 360;
+    return d;
+  }
+
+  let targetX = 0, targetY = 0;
+  let smoothX = 0, smoothY = 0;
+  const LERP_FACTOR = 0.20;
+
+  function loop() {
+    if (haveOrientation && !stepPlay.classList.contains("hidden")) {
+      const pitchRad = (latest.beta * Math.PI) / 180;
+      const deltaGamma = diffAngle(latest.gamma, center.gamma);
+      const deltaAlpha = diffAngle(latest.alpha, center.alpha);
+      const deltaBeta = diffAngle(latest.beta, center.beta);
+
+      let rawAngleX = -(deltaGamma * Math.cos(pitchRad) + deltaAlpha * Math.sin(pitchRad));
+      let rawAngleY = deltaBeta;
+
+      if (invertX) rawAngleX = -rawAngleX;
+      if (invertY) rawAngleY = -rawAngleY;
+
+      let normX = rawAngleX / (35 / userSensitivity);
+      let normY = rawAngleY / (35 / userSensitivity);
+
+      const DEADZONE = 0.02;
+      if (Math.abs(normX) < DEADZONE) {
+        normX = 0;
+      } else {
+        normX = Math.sign(normX) * ((Math.abs(normX) - DEADZONE) / (1 - DEADZONE));
+      }
+      if (Math.abs(normY) < DEADZONE) {
+        normY = 0;
+      } else {
+        normY = Math.sign(normY) * ((Math.abs(normY) - DEADZONE) / (1 - DEADZONE));
+      }
+
+      targetX = Math.max(-1, Math.min(1, normX));
+      targetY = Math.max(-1, Math.min(1, normY));
+
+      smoothX += (targetX - smoothX) * LERP_FACTOR;
+      smoothY += (targetY - smoothY) * LERP_FACTOR;
+
+      tiltReadout.textContent = `aim: X=${smoothX.toFixed(2)}, Y=${smoothY.toFixed(2)}`;
+      send({ type: "aim", x: smoothX, y: smoothY });
+    }
+    requestAnimationFrame(loop);
+  }
+  requestAnimationFrame(loop);
+
+  // --- PAUSE & RESUME ---
+  let isPhonePaused = false;
+  const pauseBtn = document.getElementById("pause-btn");
+
+  function resetPauseState() {
+    isPhonePaused = false;
+    if (pauseBtn) {
+      pauseBtn.textContent = "⏸️ Pause";
+      pauseBtn.style.background = "#242438";
+      pauseBtn.style.color = "#eaf4ff";
+    }
+    if (fireBtn) {
+      fireBtn.disabled = false;
+      fireBtn.style.opacity = "1";
+    }
+  }
+
+  if (pauseBtn) {
+    pauseBtn.addEventListener("click", () => {
+      isPhonePaused = !isPhonePaused;
+      if (isPhonePaused) {
+        send({ type: "pause" });
+        pauseBtn.textContent = "▶️ RESUME";
+        pauseBtn.style.background = "var(--gold)";
+        pauseBtn.style.color = "#0c0c14";
+        fireBtn.disabled = true;
+        fireBtn.style.opacity = "0.3";
+      } else {
+        send({ type: "resume" });
+        pauseBtn.textContent = "⏸️ Pause";
+        pauseBtn.style.background = "#242438";
+        pauseBtn.style.color = "#eaf4ff";
+        fireBtn.disabled = false;
+        fireBtn.style.opacity = "1";
+      }
+    });
+  }
+
+  // --- FIRE ---
+  fireBtn.addEventListener("click", () => {
+    if (isPhonePaused) return;
+    send({ type: "fire" });
+    const clone = shootSound.cloneNode();
+    clone.volume = 0.5;
+    clone.play().catch(() => {});
+    if (navigator.vibrate) navigator.vibrate(35);
+  });
+
+  // --- PLAY AGAIN ---
+  playAgainBtn.addEventListener("click", () => {
+    resetPauseState();
+    send({ type: "restart" });
+    mangoBadge.style.display = "none";
+    miniHealthEl.textContent = "100";
+    miniHealthEl.style.color = "#4ade80";
+    miniAmmoEl.textContent = "5";
+    miniAmmoEl.style.color = "var(--ghost)";
+    miniScoreEl.textContent = "0";
+    stepGameover.classList.add("hidden");
+    stepPlay.classList.remove("hidden");
+  });
+</script>
+</body>
+</html>
