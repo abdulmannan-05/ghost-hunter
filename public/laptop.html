@@ -346,19 +346,17 @@
   // 2D LAYERED SPRITE & ENVIRONMENT ASSET ENGINE WITH CHROMA KEY
   // ===================================================================
   const roomAssets = {
-    bgWall: new Image(),
-    bookshelf: new Image(),
-    cabinet: new Image(),
-    portrait: new Image(),
+    background: new Image(),
     ghost: new Image(),
-    candleSheet: new Image()
+    candleSheet: new Image(),
+    fireSheet: new Image()
   };
 
   const roomAssetsProcessed = {};
   const roomAssetsLoaded = {};
 
   function processChromaKey(img, key) {
-    if (key === "bgWall") return img; // Wall backdrop stays solid
+    if (key === "background") return img; // Main room backdrop stays solid
 
     try {
       const offscreen = document.createElement("canvas");
@@ -412,13 +410,10 @@
     };
   }
 
-  roomAssets.bgWall.src = "assets/images/bg_wall.png";
-  roomAssets.bookshelf.src = "assets/images/prop_bookshelf.png";
-  roomAssets.cabinet.src = "assets/images/prop_cabinet.png";
-  roomAssets.portrait.src = "assets/images/prop_portrait.png";
-
+  roomAssets.background.src = "assets/images/background.png";
   roomAssets.ghost.src = "assets/sprites/ghost.png";
   roomAssets.candleSheet.src = "assets/sprites/candle_sheet.png";
+  roomAssets.fireSheet.src = "assets/sprites/fire_sheet.png";
 
   // ===================================================================
   // CONNECTION + PAIRING
@@ -924,21 +919,20 @@
   // MULTI-LAYER 2D PARALLAX ENVIRONMENT RENDERER
   // ===================================================================
 
-  // Layer 0: Far Background Wall (bg_wall.png)
-  function drawParallaxWall() {
+  // Layer 0: Unified Parallax Room Backdrop (background.png)
+  function drawParallaxBackground() {
     const W = canvas.width || window.innerWidth;
     const H = canvas.height || window.innerHeight;
     const aimX = isNaN(currentAimX) ? 0 : currentAimX;
     const aimY = isNaN(currentAimY) ? 0 : currentAimY;
-    const px = aimX * 14;
-    const py = aimY * 10;
+    const px = aimX * 16;
+    const py = aimY * 12;
     const margin = 60;
 
-    if (roomAssetsLoaded.bgWall) {
-      const img = getAsset("bgWall");
+    if (roomAssetsLoaded.background) {
+      const img = getAsset("background");
       ctx.drawImage(img, -margin + px, -margin + py, W + margin * 2, H + margin * 2);
     } else {
-      // Atmospheric rich dark purple wallpaper gradient fallback so canvas is NEVER blank/black!
       const wallGrad = ctx.createLinearGradient(0, 0, 0, H);
       wallGrad.addColorStop(0, "#1f1535");
       wallGrad.addColorStop(0.5, "#140c24");
@@ -948,68 +942,7 @@
     }
   }
 
-  // Layer 1: Wall Portrait (prop_portrait.png)
-  function drawParallaxPortrait() {
-    const W = canvas.width || window.innerWidth;
-    const H = canvas.height || window.innerHeight;
-    const aimX = isNaN(currentAimX) ? 0 : currentAimX;
-    const aimY = isNaN(currentAimY) ? 0 : currentAimY;
-    const px = aimX * 22;
-    const py = aimY * 14;
-
-    if (roomAssetsLoaded.portrait) {
-      const img = getAsset("portrait");
-      const dim = getAssetDim("portrait");
-      const w = 180, h = w * dim.ratio;
-      const x = W * 0.76 + px - w / 2;
-      const y = H * 0.18 + py - h / 2;
-      ctx.save();
-      ctx.shadowColor = "rgba(0,0,0,0.6)";
-      ctx.shadowBlur = 18;
-      ctx.drawImage(img, x, y, w, h);
-      ctx.restore();
-    }
-  }
-
-  // Layer 2: Room Furniture (prop_bookshelf.png & prop_cabinet.png)
-  function drawParallaxFurniture() {
-    const W = canvas.width || window.innerWidth;
-    const H = canvas.height || window.innerHeight;
-    const aimX = isNaN(currentAimX) ? 0 : currentAimX;
-    const aimY = isNaN(currentAimY) ? 0 : currentAimY;
-    const px = aimX * 28;
-    const py = aimY * 18;
-
-    // Bookshelf on left
-    if (roomAssetsLoaded.bookshelf) {
-      const img = getAsset("bookshelf");
-      const dim = getAssetDim("bookshelf");
-      const w = 240, h = w * dim.ratio;
-      const x = W * 0.12 + px - w / 2;
-      const y = H - h + py * 0.5;
-      ctx.save();
-      ctx.shadowColor = "rgba(0,0,0,0.7)";
-      ctx.shadowBlur = 24;
-      ctx.drawImage(img, x, y, w, h);
-      ctx.restore();
-    }
-
-    // Cabinet in center bottom
-    if (roomAssetsLoaded.cabinet) {
-      const img = getAsset("cabinet");
-      const dim = getAssetDim("cabinet");
-      const w = 260, h = w * dim.ratio;
-      const x = W * 0.50 + px - w / 2;
-      const y = H - h + 30 + py * 0.5;
-      ctx.save();
-      ctx.shadowColor = "rgba(0,0,0,0.8)";
-      ctx.shadowBlur = 28;
-      ctx.drawImage(img, x, y, w, h);
-      ctx.restore();
-    }
-  }
-
-  // Layer 2.5: Animated 3x2 Candle Sheet Renderer (candle_sheet.png)
+  // Layer 1: Animated Wall Candle Sconces (candle_sheet.png - 4x2 grid = 8 frames)
   function drawAnimatedCandles() {
     if (!roomAssetsLoaded.candleSheet) return;
     const img = getAsset("candleSheet");
@@ -1017,34 +950,70 @@
     const H = canvas.height || window.innerHeight;
     const aimX = isNaN(currentAimX) ? 0 : currentAimX;
     const aimY = isNaN(currentAimY) ? 0 : currentAimY;
-    const px = aimX * 28;
-    const py = aimY * 18;
+    const px = aimX * 22;
+    const py = aimY * 14;
+
+    // 8 animated frames (4 cols x 2 rows, 443x443 per frame)
+    const totalFrames = 8;
+    const frameIndex = Math.floor(performance.now() / 110) % totalFrames;
+    const col = frameIndex % 4;
+    const row = Math.floor(frameIndex / 4);
+    const fw = 443, fh = 443;
+
+    // Sconce positions matching background.png artwork:
+    // 1. Left Wall Sconce 1: ~8.5% W, ~48% H
+    // 2. Left Wall Sconce 2: ~36.8% W, ~48% H
+    // 3. Right Wall Sconce: ~74.2% W, ~58% H
+    // 4. Bookshelf Candle: ~18.2% W, ~29% H
+    const sconcePositions = [
+      { x: W * 0.085, y: H * 0.48, size: 52 },
+      { x: W * 0.368, y: H * 0.48, size: 52 },
+      { x: W * 0.742, y: H * 0.58, size: 52 },
+      { x: W * 0.182, y: H * 0.29, size: 42 }
+    ];
+
+    ctx.save();
+    ctx.shadowColor = "rgba(255, 179, 71, 0.95)";
+    ctx.shadowBlur = 26;
+
+    sconcePositions.forEach(pos => {
+      const cx = pos.x + px - pos.size / 2;
+      const cy = pos.y + py - pos.size / 2;
+      ctx.drawImage(img, col * fw, row * fh, fw, fh, cx, cy, pos.size, pos.size);
+    });
+
+    ctx.restore();
+  }
+
+  // Layer 2: Continuous Floor Fire beside Cabinet (fire_sheet.png - 3x2 grid = 6 frames)
+  function drawContinuousFire() {
+    if (!roomAssetsLoaded.fireSheet) return;
+    const img = getAsset("fireSheet");
+    const W = canvas.width || window.innerWidth;
+    const H = canvas.height || window.innerHeight;
+    const aimX = isNaN(currentAimX) ? 0 : currentAimX;
+    const aimY = isNaN(currentAimY) ? 0 : currentAimY;
+    const px = aimX * 24;
+    const py = aimY * 16;
 
     // 6 animated frames (3 cols x 2 rows, 512x512 per frame)
     const totalFrames = 6;
-    const frameIndex = Math.floor(performance.now() / 120) % totalFrames;
+    const frameIndex = Math.floor(performance.now() / 90) % totalFrames;
     const col = frameIndex % 3;
     const row = Math.floor(frameIndex / 3);
     const fw = 512, fh = 512;
 
-    // Candle 1 on Cabinet top
-    const c1W = 80, c1H = 80;
-    const c1X = W * 0.44 + px - c1W / 2;
-    const c1Y = H - 185 + py * 0.5;
-
-    // Candle 2 on Bookshelf shelf
-    const c2W = 70, c2H = 70;
-    const c2X = W * 0.18 + px - c2W / 2;
-    const c2Y = H - 245 + py * 0.5;
+    // Red circle location beside cabinet on floor (~79% width, ~88% height)
+    const fireW = 135, fireH = 135;
+    const fireX = W * 0.79 + px - fireW / 2;
+    const fireY = H * 0.88 + py - fireH * 0.75;
 
     ctx.save();
-    ctx.shadowColor = "rgba(255,179,71,0.95)";
-    ctx.shadowBlur = 30;
+    ctx.shadowColor = "rgba(255, 90, 25, 0.95)";
+    ctx.shadowBlur = 36;
+    ctx.globalCompositeOperation = "lighter";
 
-    // Candle 1
-    ctx.drawImage(img, col * fw, row * fh, fw, fh, c1X, c1Y, c1W, c1H);
-    // Candle 2
-    ctx.drawImage(img, col * fw, row * fh, fw, fh, c2X, c2Y, c2W, c2H);
+    ctx.drawImage(img, col * fw, row * fh, fw, fh, fireX, fireY, fireW, fireH);
 
     ctx.restore();
   }
@@ -1346,17 +1315,14 @@
       ctx.translate(shakeX, shakeY);
     }
 
-    // LAYER 0: Far Background Wall (bg_wall.png)
-    drawParallaxWall();
+    // LAYER 0: Unified Parallax Room Backdrop (background.png)
+    drawParallaxBackground();
 
-    // LAYER 1: Wall Portrait (prop_portrait.png)
-    drawParallaxPortrait();
-
-    // LAYER 2: Midground Furniture Props (prop_bookshelf.png & prop_cabinet.png)
-    drawParallaxFurniture();
-
-    // LAYER 2.5: Animated Flickering Candles (candle_sheet.png)
+    // LAYER 1: Animated Wall Candle Sconces (candle_sheet.png)
     drawAnimatedCandles();
+
+    // LAYER 2: Continuous Floor Fire beside Cabinet (fire_sheet.png at red circle position)
+    drawContinuousFire();
 
     // Ambient Fog Particles
     drawFog();
