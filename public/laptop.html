@@ -341,21 +341,35 @@
     }, { passive: true });
   });
 
-  // Load Images & Sprites
-  const bgImg = new Image();
-  let bgImgLoaded = false;
-  bgImg.onload = () => { bgImgLoaded = true; };
-  bgImg.onerror = () => {
-    if (bgImg.src.endsWith(".png")) {
-      bgImg.src = "assets/images/background.jpg";
-    }
+  // ===================================================================
+  // 2D LAYERED SPRITE & ENVIRONMENT ASSET ENGINE
+  // ===================================================================
+  const roomAssets = {
+    bgWall: new Image(),
+    fgCurtains: new Image(),
+    bookshelf: new Image(),
+    cabinet: new Image(),
+    portrait: new Image(),
+    ghostStandard: new Image(),
+    ghostFast: new Image(),
+    ghostBoss: new Image()
   };
-  bgImg.src = "assets/images/background.png";
 
-  const ghostImg = new Image();
-  ghostImg.src = "assets/sprites/ghost.png";
-  let ghostImgLoaded = false;
-  ghostImg.onload = () => { ghostImgLoaded = true; };
+  const roomAssetsLoaded = {};
+  for (const [key, img] of Object.entries(roomAssets)) {
+    roomAssetsLoaded[key] = false;
+    img.onload = () => { roomAssetsLoaded[key] = true; };
+  }
+
+  roomAssets.bgWall.src = "assets/images/bg_wall.png";
+  roomAssets.fgCurtains.src = "assets/images/foreground_curtains.png";
+  roomAssets.bookshelf.src = "assets/images/prop_bookshelf.png";
+  roomAssets.cabinet.src = "assets/images/prop_cabinet.png";
+  roomAssets.portrait.src = "assets/images/prop_portrait.png";
+
+  roomAssets.ghostStandard.src = "assets/sprites/ghost_standard.png";
+  roomAssets.ghostFast.src = "assets/sprites/ghost_fast.png";
+  roomAssets.ghostBoss.src = "assets/sprites/ghost_boss.png";
 
   // ===================================================================
   // CONNECTION + PAIRING
@@ -753,10 +767,16 @@
 
   function spawnGhost() {
     const entrance = ENTRANCE_TYPES[Math.floor(Math.random() * ENTRANCE_TYPES.length)];
+    let gType = "standard";
+    if (entrance === "edge") gType = "fast";
+    if (score >= MANGO_TARGET - 2 || (Math.random() < 0.25 && survivalTime > 25)) gType = "boss";
+
     const g = {
       alive: true, dying: false, dieProgress: 0, spawnScale: 0,
-      radius: 54, entrance, phase: "entering", timer: 0,
+      radius: gType === "boss" ? 64 : (gType === "fast" ? 48 : 54),
+      entrance, phase: "entering", timer: 0, type: gType,
       x: 0, y: 0, vx: 0, vy: 0, bobPhase: Math.random() * Math.PI * 2,
+      hitTimer: 0
     };
 
     if (entrance === "curtain-left" || entrance === "curtain-right") {
@@ -776,8 +796,8 @@
       const tx = canvas.width / 2 + (Math.random() - 0.5) * canvas.width * 0.4;
       const ty = canvas.height / 2 + (Math.random() - 0.5) * canvas.height * 0.3;
       const ang = Math.atan2(ty - g.y, tx - g.x);
-      g.vx = Math.cos(ang) * 5.5;
-      g.vy = Math.sin(ang) * 5.5;
+      g.vx = Math.cos(ang) * (gType === "fast" ? 7.5 : 5.5);
+      g.vy = Math.sin(ang) * (gType === "fast" ? 7.5 : 5.5);
     }
 
     ghosts.push(g);
@@ -843,48 +863,93 @@
   // ===================================================================
   // CUSTOM IMAGE & BACKGROUND ARTWORK RENDERER
   // ===================================================================
-  function drawBackground() {
+  // ===================================================================
+  // MULTI-LAYER 2D PARALLAX ENVIRONMENT RENDERER
+  // ===================================================================
+
+  // Layer 0: Far Background Wall (bg_wall.png)
+  function drawParallaxWall() {
     const W = canvas.width, H = canvas.height;
+    const px = currentAimX * 14;
+    const py = currentAimY * 10;
 
-    if (bgImgLoaded) {
-      // Draw background.jpg centered with cover scaling
-      const imgRatio = bgImg.width / bgImg.height;
-      const canvasRatio = W / H;
-      let drawW, drawH, drawX, drawY;
-
-      if (canvasRatio > imgRatio) {
-        drawW = W;
-        drawH = W / imgRatio;
-        drawX = 0;
-        drawY = (H - drawH) / 2;
-      } else {
-        drawH = H;
-        drawW = H * imgRatio;
-        drawX = (W - drawW) / 2;
-        drawY = 0;
-      }
-
-      ctx.drawImage(bgImg, drawX, drawY, drawW, drawH);
-
-      // Subtle atmospheric vignette overlay
-      ctx.save();
-      const vigGrad = ctx.createRadialGradient(W / 2, H / 2, W * 0.35, W / 2, H / 2, W * 0.75);
-      vigGrad.addColorStop(0, "rgba(7,7,12,0.15)");
-      vigGrad.addColorStop(1, "rgba(5,5,10,0.75)");
-      ctx.fillStyle = vigGrad;
-      ctx.fillRect(0, 0, W, H);
-      ctx.restore();
+    if (roomAssetsLoaded.bgWall) {
+      const img = roomAssets.bgWall;
+      const margin = 50;
+      ctx.drawImage(img, -margin + px, -margin + py, W + margin * 2, H + margin * 2);
     } else {
-      // Fallback wallpaper rendering if image is loading
-      const wallGrad = ctx.createLinearGradient(0, 0, 0, H);
-      wallGrad.addColorStop(0, "#1a1028");
-      wallGrad.addColorStop(0.5, "#140e22");
-      wallGrad.addColorStop(1, "#08060e");
-      ctx.fillStyle = wallGrad;
+      ctx.fillStyle = "#0c0a14";
       ctx.fillRect(0, 0, W, H);
     }
+  }
 
-    drawFog();
+  // Layer 1: Wall Portrait (prop_portrait.png)
+  function drawParallaxPortrait() {
+    const W = canvas.width, H = canvas.height;
+    const px = currentAimX * 22;
+    const py = currentAimY * 14;
+
+    if (roomAssetsLoaded.portrait) {
+      const img = roomAssets.portrait;
+      const w = 180, h = w * (img.height / img.width);
+      const x = W * 0.76 + px - w / 2;
+      const y = H * 0.18 + py - h / 2;
+      ctx.save();
+      ctx.shadowColor = "rgba(0,0,0,0.6)";
+      ctx.shadowBlur = 18;
+      ctx.drawImage(img, x, y, w, h);
+      ctx.restore();
+    }
+  }
+
+  // Layer 2: Room Furniture (prop_bookshelf.png & prop_cabinet.png)
+  function drawParallaxFurniture() {
+    const W = canvas.width, H = canvas.height;
+    const px = currentAimX * 28;
+    const py = currentAimY * 18;
+
+    // Bookshelf on left
+    if (roomAssetsLoaded.bookshelf) {
+      const img = roomAssets.bookshelf;
+      const w = 240, h = w * (img.height / img.width);
+      const x = W * 0.12 + px - w / 2;
+      const y = H - h + py * 0.5;
+      ctx.save();
+      ctx.shadowColor = "rgba(0,0,0,0.7)";
+      ctx.shadowBlur = 24;
+      ctx.drawImage(img, x, y, w, h);
+      ctx.restore();
+    }
+
+    // Cabinet in center bottom
+    if (roomAssetsLoaded.cabinet) {
+      const img = roomAssets.cabinet;
+      const w = 260, h = w * (img.height / img.width);
+      const x = W * 0.50 + px - w / 2;
+      const y = H - h + 30 + py * 0.5;
+      ctx.save();
+      ctx.shadowColor = "rgba(0,0,0,0.8)";
+      ctx.shadowBlur = 28;
+      ctx.drawImage(img, x, y, w, h);
+      ctx.restore();
+    }
+  }
+
+  // Layer 4: Foreground Framing Curtains (foreground_curtains.png)
+  function drawParallaxCurtains() {
+    const W = canvas.width, H = canvas.height;
+    const px = currentAimX * 38;
+    const py = currentAimY * 24;
+
+    if (roomAssetsLoaded.fgCurtains) {
+      const img = roomAssets.fgCurtains;
+      const margin = 60;
+      ctx.save();
+      ctx.shadowColor = "rgba(0,0,0,0.85)";
+      ctx.shadowBlur = 30;
+      ctx.drawImage(img, -margin + px, -margin + py, W + margin * 2, H + margin * 2);
+      ctx.restore();
+    }
   }
 
   function drawFog() {
@@ -904,99 +969,8 @@
   }
 
   // ===================================================================
-  // CUSTOM GHOST SPRITE RENDERER
+  // MULTI-VARIANT GHOST SPRITE RENDERER
   // ===================================================================
-  function drawGhost(g) {
-    ctx.save();
-    const bobY = Math.sin(g.bobPhase) * 6;
-    ctx.translate(g.x, g.y + bobY);
-
-    if (g.phase === "entering" && g.entrance !== "edge" && g.timer < 0.3) {
-      ctx.translate((Math.random() - 0.5) * 8, (Math.random() - 0.5) * 8);
-    }
-
-    const scale = g.dying ? (1 - g.dieProgress) * g.spawnScale : g.spawnScale;
-    const alpha = g.dying ? 1 - g.dieProgress : 1;
-    ctx.globalAlpha = Math.max(0, alpha);
-    ctx.scale(scale, scale);
-
-    if (ghostImgLoaded) {
-      const renderW = g.radius * 2.4;
-      const renderH = renderW * (ghostImg.height / ghostImg.width);
-
-      // Soft spectral glow behind custom sprite
-      ctx.shadowColor = "rgba(99,200,255,0.85)";
-      ctx.shadowBlur = 35;
-
-      ctx.drawImage(ghostImg, -renderW / 2, -renderH / 2, renderW, renderH);
-    } else {
-      // Fallback emoji renderer
-      ctx.shadowColor = "rgba(99,200,255,0.9)";
-      ctx.shadowBlur = 45;
-      ctx.font = `${g.radius * 2.1}px serif`;
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillText("👻", 0, 4);
-    }
-
-    ctx.restore();
-  }
-
-  function drawAllGhosts() {
-    ghosts.forEach(drawGhost);
-  }
-
-  // ===================================================================
-  // CROSSHAIR
-  // ===================================================================
-  // ===================================================================
-  // ARCANE ANIMATED CROSSHAIR & JUICY IMPACT FEEDBACK
-  // ===================================================================
-  let crosshairRecoil = 0.0;
-  let magicRingAngle = 0.0;
-  let screenShakeIntensity = 0.0;
-  const soulParticles = [];
-
-  function spawnHitParticles(x, y) {
-    for (let i = 0; i < 22; i++) {
-      const angle = Math.random() * Math.PI * 2;
-      const speed = 2.5 + Math.random() * 6.5;
-      soulParticles.push({
-        x: x, y: y,
-        vx: Math.cos(angle) * speed,
-        vy: Math.sin(angle) * speed - 1.2, // float upward
-        r: 3 + Math.random() * 5,
-        alpha: 1.0,
-        color: Math.random() > 0.3 ? "rgba(99,200,255," : "rgba(255,209,102,"
-      });
-    }
-  }
-
-  function updateAndDrawParticles(dt) {
-    ctx.save();
-    for (let i = soulParticles.length - 1; i >= 0; i--) {
-      const p = soulParticles[i];
-      p.x += p.vx;
-      p.y += p.vy;
-      p.vy += 0.08; // subtle float drift
-      p.alpha -= dt * 2.2;
-      p.r = Math.max(0.5, p.r - dt * 2.0);
-
-      if (p.alpha <= 0 || p.r <= 0.5) {
-        soulParticles.splice(i, 1);
-        continue;
-      }
-
-      ctx.shadowColor = p.color + "0.9)";
-      ctx.shadowBlur = 12;
-      ctx.fillStyle = p.color + p.alpha + ")";
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    ctx.restore();
-  }
-
   function drawGhost(g) {
     ctx.save();
     let hitOffset = 0;
@@ -1028,20 +1002,23 @@
     ctx.globalAlpha = Math.max(0, alpha);
     ctx.scale(scale, scale);
 
-    if (ghostImgLoaded) {
-      const renderW = g.radius * 2.4;
-      const renderH = renderW * (ghostImg.height / ghostImg.width);
+    const ghostSprite = g.type === "boss" ? roomAssets.ghostBoss : (g.type === "fast" ? roomAssets.ghostFast : roomAssets.ghostStandard);
+    const spriteLoaded = roomAssetsLoaded[g.type === "boss" ? "ghostBoss" : (g.type === "fast" ? "ghostFast" : "ghostStandard")];
 
-      ctx.shadowColor = g.hitTimer > 0 ? "rgba(255,255,255,1.0)" : "rgba(99,200,255,0.85)";
+    if (spriteLoaded) {
+      const renderW = g.radius * 2.4;
+      const renderH = renderW * (ghostSprite.height / ghostSprite.width);
+
+      ctx.shadowColor = g.hitTimer > 0 ? "rgba(255,255,255,1.0)" : (g.type === "boss" ? "rgba(255,209,102,0.9)" : (g.type === "fast" ? "rgba(255,37,48,0.9)" : "rgba(99,200,255,0.85)"));
       ctx.shadowBlur = g.hitTimer > 0 ? 55 : 35;
 
-      ctx.drawImage(ghostImg, -renderW / 2, -renderH / 2, renderW, renderH);
+      ctx.drawImage(ghostSprite, -renderW / 2, -renderH / 2, renderW, renderH);
 
       // Hit Flash silhouette burst
       if (g.hitTimer > 0) {
         ctx.globalCompositeOperation = "lighter";
         ctx.globalAlpha = Math.max(0, g.hitTimer * 2.5);
-        ctx.drawImage(ghostImg, -renderW / 2, -renderH / 2, renderW, renderH);
+        ctx.drawImage(ghostSprite, -renderW / 2, -renderH / 2, renderW, renderH);
       }
     } else {
       ctx.shadowColor = "rgba(99,200,255,0.9)";
@@ -1228,16 +1205,32 @@
       ctx.translate(shakeX, shakeY);
     }
 
-    drawBackground();
+    // LAYER 0: Far Background Wall (bg_wall.png)
+    drawParallaxWall();
 
+    // LAYER 1: Wall Portrait (prop_portrait.png)
+    drawParallaxPortrait();
+
+    // LAYER 2: Midground Furniture Props (prop_bookshelf.png & prop_cabinet.png)
+    drawParallaxFurniture();
+
+    // Ambient Fog Particles
+    drawFog();
+
+    // LAYER 3: Ghost Enemies (Floating in 2D depth space between furniture & curtains!)
     if (!gameOver && !isPaused) {
       trySpawnWave(dt);
       updateGhosts(dt);
       damageFlashEl.style.opacity = health < MAX_HEALTH * 0.3 ? 0.35 : 0;
     }
-
     drawAllGhosts();
+
+    // LAYER 4: Foreground Framing Curtains (foreground_curtains.png) - drawn OVER ghosts!
+    drawParallaxCurtains();
+
+    // LAYER 5: Hit Burst Particles
     updateAndDrawParticles(dt);
+
     ctx.restore(); // Restore camera shake before drawing screen-space HUD crosshair
 
     drawCrosshair(crosshairPos());
