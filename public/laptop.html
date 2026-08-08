@@ -342,7 +342,7 @@
   });
 
   // ===================================================================
-  // 2D LAYERED SPRITE & ENVIRONMENT ASSET ENGINE
+  // 2D LAYERED SPRITE & ENVIRONMENT ASSET ENGINE WITH CHROMA KEY
   // ===================================================================
   const roomAssets = {
     bgWall: new Image(),
@@ -355,10 +355,62 @@
     ghostBoss: new Image()
   };
 
+  const roomAssetsProcessed = {};
   const roomAssetsLoaded = {};
+
+  function processChromaKey(img, key, threshold = 32) {
+    if (key === "bgWall") return img; // Wall backdrop stays solid
+
+    try {
+      const offscreen = document.createElement("canvas");
+      const w = img.naturalWidth || img.width;
+      const h = img.naturalHeight || img.height;
+      if (!w || !h) return img;
+      offscreen.width = w;
+      offscreen.height = h;
+      const octx = offscreen.getContext("2d");
+      octx.drawImage(img, 0, 0);
+
+      const imgData = octx.getImageData(0, 0, w, h);
+      const data = imgData.data;
+
+      for (let i = 0; i < data.length; i += 4) {
+        const r = data[i], g = data[i + 1], b = data[i + 2];
+        // Remove solid black / dark background pixels
+        if (r <= threshold && g <= threshold && b <= threshold) {
+          data[i + 3] = 0; // 100% transparent alpha cutout!
+        } else if (r <= threshold + 25 && g <= threshold + 25 && b <= threshold + 25) {
+          // Feather edges smoothly for soft anti-aliased cutout
+          const maxVal = Math.max(r, g, b);
+          data[i + 3] = Math.floor(((maxVal - threshold) / 25) * 255);
+        }
+      }
+
+      octx.putImageData(imgData, 0, 0);
+      return offscreen;
+    } catch (e) {
+      console.warn("Chroma key fallback for " + key, e);
+      return img;
+    }
+  }
+
+  function getAsset(key) {
+    return roomAssetsProcessed[key] || roomAssets[key];
+  }
+
+  function getAssetDim(key) {
+    const asset = getAsset(key);
+    const w = asset.width || asset.naturalWidth || 1;
+    const h = asset.height || asset.naturalHeight || 1;
+    return { w, h, ratio: h / w };
+  }
+
   for (const [key, img] of Object.entries(roomAssets)) {
     roomAssetsLoaded[key] = false;
-    img.onload = () => { roomAssetsLoaded[key] = true; };
+    img.onload = () => {
+      roomAssetsProcessed[key] = processChromaKey(img, key);
+      roomAssetsLoaded[key] = true;
+    };
   }
 
   roomAssets.bgWall.src = "assets/images/bg_wall.png";
@@ -885,8 +937,9 @@
     const py = aimY * 10;
     const margin = 60;
 
-    if (roomAssetsLoaded.bgWall && roomAssets.bgWall.complete && roomAssets.bgWall.naturalWidth > 0) {
-      ctx.drawImage(roomAssets.bgWall, -margin + px, -margin + py, W + margin * 2, H + margin * 2);
+    if (roomAssetsLoaded.bgWall) {
+      const img = getAsset("bgWall");
+      ctx.drawImage(img, -margin + px, -margin + py, W + margin * 2, H + margin * 2);
     } else {
       // Atmospheric rich dark purple wallpaper gradient fallback so canvas is NEVER blank/black!
       const wallGrad = ctx.createLinearGradient(0, 0, 0, H);
@@ -907,9 +960,10 @@
     const px = aimX * 22;
     const py = aimY * 14;
 
-    if (roomAssetsLoaded.portrait && roomAssets.portrait.complete && roomAssets.portrait.naturalWidth > 0) {
-      const img = roomAssets.portrait;
-      const w = 180, h = w * (img.naturalHeight / img.naturalWidth);
+    if (roomAssetsLoaded.portrait) {
+      const img = getAsset("portrait");
+      const dim = getAssetDim("portrait");
+      const w = 180, h = w * dim.ratio;
       const x = W * 0.76 + px - w / 2;
       const y = H * 0.18 + py - h / 2;
       ctx.save();
@@ -930,9 +984,10 @@
     const py = aimY * 18;
 
     // Bookshelf on left
-    if (roomAssetsLoaded.bookshelf && roomAssets.bookshelf.complete && roomAssets.bookshelf.naturalWidth > 0) {
-      const img = roomAssets.bookshelf;
-      const w = 240, h = w * (img.naturalHeight / img.naturalWidth);
+    if (roomAssetsLoaded.bookshelf) {
+      const img = getAsset("bookshelf");
+      const dim = getAssetDim("bookshelf");
+      const w = 240, h = w * dim.ratio;
       const x = W * 0.12 + px - w / 2;
       const y = H - h + py * 0.5;
       ctx.save();
@@ -943,9 +998,10 @@
     }
 
     // Cabinet in center bottom
-    if (roomAssetsLoaded.cabinet && roomAssets.cabinet.complete && roomAssets.cabinet.naturalWidth > 0) {
-      const img = roomAssets.cabinet;
-      const w = 260, h = w * (img.naturalHeight / img.naturalWidth);
+    if (roomAssetsLoaded.cabinet) {
+      const img = getAsset("cabinet");
+      const dim = getAssetDim("cabinet");
+      const w = 260, h = w * dim.ratio;
       const x = W * 0.50 + px - w / 2;
       const y = H - h + 30 + py * 0.5;
       ctx.save();
@@ -965,8 +1021,8 @@
     const px = aimX * 38;
     const py = aimY * 24;
 
-    if (roomAssetsLoaded.fgCurtains && roomAssets.fgCurtains.complete && roomAssets.fgCurtains.naturalWidth > 0) {
-      const img = roomAssets.fgCurtains;
+    if (roomAssetsLoaded.fgCurtains) {
+      const img = getAsset("fgCurtains");
       const margin = 60;
       ctx.save();
       ctx.shadowColor = "rgba(0,0,0,0.85)";
@@ -1067,12 +1123,14 @@
     ctx.globalAlpha = Math.max(0, alpha);
     ctx.scale(scale, scale);
 
-    const ghostSprite = g.type === "boss" ? roomAssets.ghostBoss : (g.type === "fast" ? roomAssets.ghostFast : roomAssets.ghostStandard);
-    const spriteLoaded = roomAssetsLoaded[g.type === "boss" ? "ghostBoss" : (g.type === "fast" ? "ghostFast" : "ghostStandard")];
+    const spriteKey = g.type === "boss" ? "ghostBoss" : (g.type === "fast" ? "ghostFast" : "ghostStandard");
+    const ghostSprite = getAsset(spriteKey);
+    const spriteLoaded = roomAssetsLoaded[spriteKey];
 
     if (spriteLoaded) {
+      const dim = getAssetDim(spriteKey);
       const renderW = g.radius * 2.4;
-      const renderH = renderW * (ghostSprite.height / ghostSprite.width);
+      const renderH = renderW * dim.ratio;
 
       ctx.shadowColor = g.hitTimer > 0 ? "rgba(255,255,255,1.0)" : (g.type === "boss" ? "rgba(255,209,102,0.9)" : (g.type === "fast" ? "rgba(255,37,48,0.9)" : "rgba(99,200,255,0.85)"));
       ctx.shadowBlur = g.hitTimer > 0 ? 55 : 35;
