@@ -951,8 +951,9 @@
     const H = canvas.height || window.innerHeight;
     const aimX = isNaN(currentAimX) ? 0 : currentAimX;
     const aimY = isNaN(currentAimY) ? 0 : currentAimY;
-    const px = aimX * 22;
-    const py = aimY * 14;
+    // Parallax tracking locked 1:1 with background room wall
+    const px = aimX * 16;
+    const py = aimY * 12;
 
     // 8 animated frames (4 cols x 2 rows, 443x443 per frame)
     const totalFrames = 8;
@@ -961,7 +962,7 @@
     const row = Math.floor(frameIndex / 4);
     const fw = 443, fh = 443;
 
-    // Sconce positions precisely matching background.png artwork:
+    // Fixed sconce positions locked to background.png wall artwork:
     // 1. Left Wall Sconce 1 (between left curtain & bookshelf): ~8.8% W, ~49% H
     // 2. Left Wall Sconce 2 (between bookshelf & window): ~36.8% W, ~49% H
     // 3. Right Wall Sconce (under portrait, left of cabinet): ~74.2% W, ~59% H
@@ -986,7 +987,7 @@
     ctx.restore();
   }
 
-  // Layer 2: Continuous Floor Fire beside Cabinet (fire_sheet.png - 3x2 grid = 6 frames)
+  // Layer 2: Continuous Single Floor Fire beside Cabinet (fire_sheet.png - 4x2 grid, 384x512 per frame)
   function drawContinuousFire() {
     if (!roomAssetsLoaded.fireSheet) return;
     const img = getAsset("fireSheet");
@@ -994,18 +995,19 @@
     const H = canvas.height || window.innerHeight;
     const aimX = isNaN(currentAimX) ? 0 : currentAimX;
     const aimY = isNaN(currentAimY) ? 0 : currentAimY;
-    const px = aimX * 24;
-    const py = aimY * 16;
+    // Parallax tracking locked 1:1 with background room wall
+    const px = aimX * 16;
+    const py = aimY * 12;
 
-    // 6 animated frames (3 cols x 2 rows, 512x512 per frame)
-    const totalFrames = 6;
-    const frameIndex = Math.floor(performance.now() / 90) % totalFrames;
-    const col = frameIndex % 3;
-    const row = Math.floor(frameIndex / 3);
-    const fw = 512, fh = 512;
+    // 4 columns x 2 rows = 384x512 per frame (6 active frames)
+    const activeFrames = [[0,0], [1,0], [2,0], [0,1], [1,1], [2,1]];
+    const frameIndex = Math.floor(performance.now() / 95) % activeFrames.length;
+    const cell = activeFrames[frameIndex];
+    const col = cell[0], row = cell[1];
+    const fw = 384, fh = 512;
 
     // Red circle location on floor rug beside cabinet bottom legs (~76.5% width, ~91.5% height)
-    const fireW = 115, fireH = 115;
+    const fireW = 110, fireH = 110;
     const fireX = W * 0.765 + px - fireW / 2;
     const fireY = H * 0.915 + py - fireH * 0.85;
 
