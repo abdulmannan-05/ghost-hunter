@@ -373,12 +373,13 @@
 
       for (let i = 0; i < data.length; i += 4) {
         const r = data[i], g = data[i + 1], b = data[i + 2];
-        // Key out solid black (#000000), green screen (#00FF00), or bright magenta (#FF00FF)
-        const isBlack = r <= 35 && g <= 35 && b <= 35;
+        // Key out solid black (#000000), green screen (#00FF00), bright magenta (#FF00FF), or white checkerboard (#FFFFFF)
+        const isBlack = r <= 38 && g <= 38 && b <= 38;
         const isGreen = g >= 150 && r <= 110 && b <= 110;
         const isMagenta = r >= 150 && b >= 150 && g <= 110;
+        const isWhite = r >= 185 && g >= 185 && b >= 185;
 
-        if (isBlack || isGreen || isMagenta) {
+        if (isBlack || isGreen || isMagenta || isWhite) {
           data[i + 3] = 0; // 100% transparent alpha cutout!
         }
       }
@@ -960,21 +961,21 @@
     const row = Math.floor(frameIndex / 4);
     const fw = 443, fh = 443;
 
-    // Sconce positions matching background.png artwork:
-    // 1. Left Wall Sconce 1: ~8.5% W, ~48% H
-    // 2. Left Wall Sconce 2: ~36.8% W, ~48% H
-    // 3. Right Wall Sconce: ~74.2% W, ~58% H
-    // 4. Bookshelf Candle: ~18.2% W, ~29% H
+    // Sconce positions precisely matching background.png artwork:
+    // 1. Left Wall Sconce 1 (between left curtain & bookshelf): ~8.8% W, ~49% H
+    // 2. Left Wall Sconce 2 (between bookshelf & window): ~36.8% W, ~49% H
+    // 3. Right Wall Sconce (under portrait, left of cabinet): ~74.2% W, ~59% H
+    // 4. Bookshelf Candle (top shelf): ~18.0% W, ~28% H
     const sconcePositions = [
-      { x: W * 0.085, y: H * 0.48, size: 52 },
-      { x: W * 0.368, y: H * 0.48, size: 52 },
-      { x: W * 0.742, y: H * 0.58, size: 52 },
-      { x: W * 0.182, y: H * 0.29, size: 42 }
+      { x: W * 0.088, y: H * 0.49, size: 40 },
+      { x: W * 0.368, y: H * 0.49, size: 40 },
+      { x: W * 0.742, y: H * 0.59, size: 40 },
+      { x: W * 0.180, y: H * 0.28, size: 34 }
     ];
 
     ctx.save();
     ctx.shadowColor = "rgba(255, 179, 71, 0.95)";
-    ctx.shadowBlur = 26;
+    ctx.shadowBlur = 24;
 
     sconcePositions.forEach(pos => {
       const cx = pos.x + px - pos.size / 2;
@@ -1003,10 +1004,10 @@
     const row = Math.floor(frameIndex / 3);
     const fw = 512, fh = 512;
 
-    // Red circle location beside cabinet on floor (~79% width, ~88% height)
-    const fireW = 135, fireH = 135;
-    const fireX = W * 0.79 + px - fireW / 2;
-    const fireY = H * 0.88 + py - fireH * 0.75;
+    // Red circle location on floor rug beside cabinet bottom legs (~76.5% width, ~91.5% height)
+    const fireW = 115, fireH = 115;
+    const fireX = W * 0.765 + px - fireW / 2;
+    const fireY = H * 0.915 + py - fireH * 0.85;
 
     ctx.save();
     ctx.shadowColor = "rgba(255, 90, 25, 0.95)";
