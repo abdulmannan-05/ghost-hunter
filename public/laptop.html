@@ -22,28 +22,31 @@
   }
 
   /* ================ LOBBY ================ */
-  #lobby{max-width:560px; width:100%; text-align:center; padding:24px}
-  #lobby h1{font-size:32px; font-weight:800; letter-spacing:2px; margin:0 0 4px;
-    background:linear-gradient(135deg,#63c8ff,#a78bfa); -webkit-background-clip:text; -webkit-text-fill-color:transparent;
-    text-shadow:0 0 20px rgba(99,200,255,0.4)}
-  #lobby .sub{color:var(--ink); font-size:13px; margin-bottom:24px}
-  .card{background:rgba(18,18,28,0.85); border:1px solid rgba(255,255,255,0.15); border-radius:18px; padding:28px; margin-bottom:16px;
-    backdrop-filter:blur(16px); box-shadow:0 12px 40px rgba(0,0,0,.6)}
-  #status-line{
-    display:inline-flex; align-items:center; gap:8px; font-size:11px;
-    letter-spacing:1.5px; text-transform:uppercase; color:var(--ink);
-    margin-bottom:18px; padding:6px 16px; border:1px solid var(--line); border-radius:999px;
+  #lobby{
+    max-width:460px; width:100%; text-align:center; padding:16px;
+    margin-top:80px; z-index:10;
   }
-  #status-dot{width:9px; height:9px; border-radius:50%; background:var(--red); box-shadow:0 0 8px var(--red);
+  .card{
+    background:rgba(12,12,20,0.78); border:1px solid rgba(99,200,255,0.25); border-radius:18px;
+    padding:20px 24px; width:100%; backdrop-filter:blur(16px);
+    box-shadow:0 16px 50px rgba(0,0,0,.8), inset 0 0 20px rgba(99,200,255,0.05);
+  }
+  #status-line{
+    display:inline-flex; align-items:center; gap:8px; font-size:10px;
+    letter-spacing:1.5px; text-transform:uppercase; color:rgba(234,244,255,0.8);
+    margin-bottom:12px; padding:5px 14px; border:1px solid rgba(255,255,255,0.12); border-radius:999px;
+    background:rgba(18,18,30,0.6);
+  }
+  #status-dot{width:8px; height:8px; border-radius:50%; background:var(--red); box-shadow:0 0 8px var(--red);
     transition:background 200ms, box-shadow 200ms}
   #status-dot.ok{background:var(--ok); box-shadow:0 0 8px var(--ok)}
   #status-dot.pending{background:#f5c542; box-shadow:0 0 8px #f5c542}
-  #qr-box{background:#fff; padding:14px; border-radius:12px; display:inline-block; margin-bottom:14px;
-    box-shadow:0 4px 16px rgba(0,0,0,.3)}
-  #room-code{font-size:36px; font-weight:800; letter-spacing:10px; color:var(--ghost);
-    text-shadow:0 0 20px rgba(99,200,255,.4); margin:8px 0}
-  .hint{font-size:12px; color:var(--ink); line-height:1.6}
-  .hint code{background:rgba(255,255,255,.06); padding:2px 6px; border-radius:4px; font-size:11px}
+  #qr-box{background:#fff; padding:10px; border-radius:12px; display:inline-block; margin-bottom:8px;
+    box-shadow:0 6px 20px rgba(0,0,0,.4)}
+  #room-code{font-size:32px; font-weight:800; letter-spacing:8px; color:var(--ghost);
+    text-shadow:0 0 20px rgba(99,200,255,.5); margin:2px 0 6px}
+  .hint{font-size:11px; color:rgba(234,244,255,0.75); line-height:1.5}
+  .hint code{background:rgba(255,255,255,.1); padding:2px 6px; border-radius:4px; font-size:10px; color:var(--ghost)}
 
   /* ================ GET READY ================ */
   #get-ready{
@@ -166,14 +169,12 @@
 
 <!-- ============ LOBBY ============ -->
 <div id="lobby">
-  <h1>👻 GHOST HUNTER</h1>
-  <div class="sub">Event Edition — Scan with your phone to start</div>
   <div class="card">
     <div id="status-line"><span id="status-dot"></span><span id="status-text">Connecting to server…</span></div>
     <div id="qr-box"><div id="qrcode"></div></div>
     <div id="room-code">----</div>
-    <div class="hint">Or open <code id="phone-url">…</code> on your phone.</div>
-    <div class="hint" style="margin-top:10px; color:var(--ghost); font-size:11px;">🔊 Click anywhere on laptop screen to enable background audio</div>
+    <div class="hint">Scan with phone camera or open <code id="phone-url">…</code> on phone.</div>
+    <div class="hint" style="margin-top:8px; color:var(--ghost); font-size:11px;">🔊 Click anywhere on laptop screen to enable background audio</div>
   </div>
 </div>
 
@@ -470,7 +471,7 @@
       const phoneUrl = `${location.protocol}//${host}/phone.html?room=${msg.room}`;
       phoneUrlEl.textContent = phoneUrl;
       qrDiv.innerHTML = "";
-      new QRCode(qrDiv, { text: phoneUrl, width: 190, height: 190, colorDark: "#0c0c14", colorLight: "#ffffff" });
+      new QRCode(qrDiv, { text: phoneUrl, width: 165, height: 165, colorDark: "#0c0c14", colorLight: "#ffffff" });
       setStatus("pending", `Room ${msg.room} ready — waiting for phone…`);
       return;
     }
