@@ -976,14 +976,14 @@
     const frameIndex = Math.floor(performance.now() / 150) % totalFrames;
     const fw = 443, fh = 887; // Full frame dimensions from the sheet
 
-    // 3 candle sconce positions precisely matched to open purple wallpaper wall sections in background.png:
-    // 1. Wall section between Bookshelf right edge & Window left edge: ~35.5% W, ~40% H
-    // 2. Wall section directly underneath the Portrait Frame: ~68.5% W, ~55% H
-    // 3. Wall section between Portrait Frame right edge & Cabinet left edge: ~75.5% W, ~36% H
+    // 3 candle sconce positions precisely placed according to room artwork:
+    // 1. Narrow wall space between Left Curtain & Bookshelf: ~9% W, ~38% H (size 38)
+    // 2. Wall space between Bookshelf & Gothic Window: ~35.5% W, ~40% H (size 46)
+    // 3. Center wall space between Gothic Window & Portrait Frame: ~60% W, ~40% H (size 46)
     const sconcePositions = [
-      { x: W * 0.355, y: H * 0.40, size: 48 },
-      { x: W * 0.685, y: H * 0.55, size: 46 },
-      { x: W * 0.755, y: H * 0.36, size: 48 }
+      { x: W * 0.090, y: H * 0.38, size: 38 },
+      { x: W * 0.355, y: H * 0.40, size: 46 },
+      { x: W * 0.600, y: H * 0.40, size: 46 }
     ];
 
     ctx.save();
@@ -1025,13 +1025,13 @@
     const frameIndex = Math.floor(performance.now() / 120) % totalFrames;
     const fw = 384, fh = 1024; // Full frame dimensions from the sheet
 
-    // Fire on the floor rug beside the cabinet's bottom-left legs (~73% W, ~95% H)
-    // Position the fire so its BASE sits on the floor
+    // Fire on the floor rug beside the cabinet's bottom-left legs (~73% W)
+    // Position the fire so its BASE rests directly on the floor
     const fireW = 60;
     const fireH = fireW * (fh / fw); // Maintain aspect ratio (1024/384 ≈ 2.67)
     const fireX = W * 0.730 + px - fireW / 2;
-    // Anchor the fire BOTTOM to the floor level
-    const fireY = H * 0.950 + py - fireH;
+    // Anchor the fire BOTTOM firmly on the floor level
+    const fireY = H * 0.985 + py - fireH + 10;
 
     ctx.save();
     ctx.shadowColor = "rgba(255, 100, 30, 0.8)";
