@@ -346,7 +346,6 @@
   // ===================================================================
   const roomAssets = {
     bgWall: new Image(),
-    fgCurtains: new Image(),
     bookshelf: new Image(),
     cabinet: new Image(),
     portrait: new Image(),
@@ -358,7 +357,7 @@
   const roomAssetsProcessed = {};
   const roomAssetsLoaded = {};
 
-  function processChromaKey(img, key, threshold = 32) {
+  function processChromaKey(img, key) {
     if (key === "bgWall") return img; // Wall backdrop stays solid
 
     try {
@@ -376,13 +375,13 @@
 
       for (let i = 0; i < data.length; i += 4) {
         const r = data[i], g = data[i + 1], b = data[i + 2];
-        // Remove solid black / dark background pixels
-        if (r <= threshold && g <= threshold && b <= threshold) {
+        // Key out solid black (#000000), green screen (#00FF00), or bright magenta (#FF00FF)
+        const isBlack = r <= 35 && g <= 35 && b <= 35;
+        const isGreen = g >= 150 && r <= 110 && b <= 110;
+        const isMagenta = r >= 150 && b >= 150 && g <= 110;
+
+        if (isBlack || isGreen || isMagenta) {
           data[i + 3] = 0; // 100% transparent alpha cutout!
-        } else if (r <= threshold + 25 && g <= threshold + 25 && b <= threshold + 25) {
-          // Feather edges smoothly for soft anti-aliased cutout
-          const maxVal = Math.max(r, g, b);
-          data[i + 3] = Math.floor(((maxVal - threshold) / 25) * 255);
         }
       }
 
@@ -414,7 +413,6 @@
   }
 
   roomAssets.bgWall.src = "assets/images/bg_wall.png";
-  roomAssets.fgCurtains.src = "assets/images/foreground_curtains.png";
   roomAssets.bookshelf.src = "assets/images/prop_bookshelf.png";
   roomAssets.cabinet.src = "assets/images/prop_cabinet.png";
   roomAssets.portrait.src = "assets/images/prop_portrait.png";
@@ -1012,25 +1010,7 @@
     }
   }
 
-  // Layer 4: Foreground Framing Curtains (foreground_curtains.png)
-  function drawParallaxCurtains() {
-    const W = canvas.width || window.innerWidth;
-    const H = canvas.height || window.innerHeight;
-    const aimX = isNaN(currentAimX) ? 0 : currentAimX;
-    const aimY = isNaN(currentAimY) ? 0 : currentAimY;
-    const px = aimX * 38;
-    const py = aimY * 24;
 
-    if (roomAssetsLoaded.fgCurtains) {
-      const img = getAsset("fgCurtains");
-      const margin = 60;
-      ctx.save();
-      ctx.shadowColor = "rgba(0,0,0,0.85)";
-      ctx.shadowBlur = 30;
-      ctx.drawImage(img, -margin + px, -margin + py, W + margin * 2, H + margin * 2);
-      ctx.restore();
-    }
-  }
 
   function drawFog() {
     ctx.save();
@@ -1348,10 +1328,7 @@
     }
     drawAllGhosts();
 
-    // LAYER 4: Foreground Framing Curtains (foreground_curtains.png) - drawn OVER ghosts!
-    drawParallaxCurtains();
-
-    // LAYER 5: Hit Burst Particles
+    // LAYER 4: Hit Burst Particles
     updateAndDrawParticles(dt);
 
     ctx.restore(); // Restore camera shake before drawing screen-space HUD crosshair
