@@ -585,6 +585,14 @@
   let targetAimX = 0, targetAimY = 0;
   let currentAimX = 0, currentAimY = 0;
 
+  // Crosshair + camera state
+  let crosshairRecoil = 0;
+  let screenShakeIntensity = 0;
+  let magicRingAngle = 0;
+
+  // Hit burst particles
+  const hitParticles = [];
+
   const fogParticles = [];
   function initFog() {
     fogParticles.length = 0;
@@ -981,6 +989,47 @@
       ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
       ctx.fill();
     });
+    ctx.restore();
+  }
+
+  // ===================================================================
+  // HIT BURST PARTICLE SYSTEM
+  // ===================================================================
+  function spawnHitParticles(x, y) {
+    const count = 18;
+    for (let i = 0; i < count; i++) {
+      const angle = (Math.PI * 2 / count) * i + (Math.random() - 0.5) * 0.4;
+      const speed = 2.5 + Math.random() * 4;
+      hitParticles.push({
+        x, y,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        life: 1.0,
+        decay: 0.02 + Math.random() * 0.02,
+        r: 3 + Math.random() * 4,
+        hue: 180 + Math.random() * 40 // cyan-blue ghost soul tones
+      });
+    }
+  }
+
+  function updateAndDrawParticles(dt) {
+    ctx.save();
+    for (let i = hitParticles.length - 1; i >= 0; i--) {
+      const p = hitParticles[i];
+      p.x += p.vx;
+      p.y += p.vy;
+      p.vy += 0.12; // gentle gravity
+      p.life -= p.decay;
+      if (p.life <= 0) { hitParticles.splice(i, 1); continue; }
+
+      ctx.globalAlpha = Math.max(0, p.life);
+      ctx.fillStyle = `hsla(${p.hue}, 90%, 70%, ${p.life})`;
+      ctx.shadowColor = `hsla(${p.hue}, 90%, 60%, 0.8)`;
+      ctx.shadowBlur = 10;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r * p.life, 0, Math.PI * 2);
+      ctx.fill();
+    }
     ctx.restore();
   }
 
