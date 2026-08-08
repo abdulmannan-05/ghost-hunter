@@ -976,14 +976,14 @@
     const frameIndex = Math.floor(performance.now() / 150) % totalFrames;
     const fw = 443, fh = 887; // Full frame dimensions from the sheet
 
-    // 3 candle sconce positions precisely placed according to room artwork:
-    // 1. Narrow wall space between Left Curtain & Bookshelf: ~9% W, ~38% H (size 38)
+    // 3 candle sconce positions precisely matched to user's red marked locations:
+    // 1. Lower wall space between Left Curtain & Bookshelf (left red oval): ~5.5% W, ~60% H (size 38)
     // 2. Wall space between Bookshelf & Gothic Window: ~35.5% W, ~40% H (size 46)
-    // 3. Center wall space between Gothic Window & Portrait Frame: ~60% W, ~40% H (size 46)
+    // 3. Lower wall space directly underneath Portrait Frame (right red circle): ~68.5% W, ~60% H (size 46)
     const sconcePositions = [
-      { x: W * 0.090, y: H * 0.38, size: 38 },
+      { x: W * 0.055, y: H * 0.60, size: 38 },
       { x: W * 0.355, y: H * 0.40, size: 46 },
-      { x: W * 0.600, y: H * 0.40, size: 46 }
+      { x: W * 0.685, y: H * 0.60, size: 46 }
     ];
 
     ctx.save();
