@@ -357,6 +357,7 @@
 
   function processChromaKey(img, key) {
     if (key === "background") return img; // Main room backdrop stays solid
+    if (key === "fireSheet") return img;  // fire_sheet.png already has RGBA alpha channel
 
     try {
       const offscreen = document.createElement("canvas");
@@ -373,14 +374,23 @@
 
       for (let i = 0; i < data.length; i += 4) {
         const r = data[i], g = data[i + 1], b = data[i + 2];
-        // Key out solid black (#000000), green screen (#00FF00), bright magenta (#FF00FF), or white checkerboard (#FFFFFF)
-        const isBlack = r <= 38 && g <= 38 && b <= 38;
-        const isGreen = g >= 150 && r <= 110 && b <= 110;
-        const isMagenta = r >= 150 && b >= 150 && g <= 110;
-        const isWhite = r >= 185 && g >= 185 && b >= 185;
 
-        if (isBlack || isGreen || isMagenta || isWhite) {
-          data[i + 3] = 0; // 100% transparent alpha cutout!
+        if (key === "candleSheet") {
+          // candle_sheet.png: only key out the white/light-gray checkerboard background
+          // Do NOT key out dark pixels — those are the bronze sconce body
+          const isWhiteBg = r >= 200 && g >= 200 && b >= 200;
+          if (isWhiteBg) {
+            data[i + 3] = 0;
+          }
+        } else {
+          // Generic chroma key for other sprites (ghost, etc.)
+          const isBlack = r <= 38 && g <= 38 && b <= 38;
+          const isGreen = g >= 150 && r <= 110 && b <= 110;
+          const isMagenta = r >= 150 && b >= 150 && g <= 110;
+          const isWhite = r >= 185 && g >= 185 && b >= 185;
+          if (isBlack || isGreen || isMagenta || isWhite) {
+            data[i + 3] = 0;
+          }
         }
       }
 
@@ -943,7 +953,11 @@
     }
   }
 
-  // Layer 1: Animated Wall Candle Sconces (candle_sheet.png - 4x2 grid = 8 frames)
+  // Layer 1: Animated Wall Candle Sconces (candle_sheet.png)
+  // Sheet is 1774x887 = 4 columns x 1 row = 4 frames of 443x887 each.
+  // Each frame shows the SAME candle sconce body with slightly different flame flicker.
+  // We anchor the sconce body to a fixed wall position so it never moves —
+  // cycling frames only changes the tiny flame at the top.
   function drawAnimatedCandles() {
     if (!roomAssetsLoaded.candleSheet) return;
     const img = getAsset("candleSheet");
@@ -951,43 +965,48 @@
     const H = canvas.height || window.innerHeight;
     const aimX = isNaN(currentAimX) ? 0 : currentAimX;
     const aimY = isNaN(currentAimY) ? 0 : currentAimY;
-    // Parallax tracking locked 1:1 with background room wall
+    // Parallax EXACTLY matching background.png (same multipliers)
     const px = aimX * 16;
     const py = aimY * 12;
 
-    // 8 animated frames (4 cols x 2 rows, 443x443 per frame)
-    const totalFrames = 8;
-    const frameIndex = Math.floor(performance.now() / 110) % totalFrames;
-    const col = frameIndex % 4;
-    const row = Math.floor(frameIndex / 4);
-    const fw = 443, fh = 443;
+    // 4 animation frames in a single row (4 cols x 1 row)
+    const totalFrames = 4;
+    const frameIndex = Math.floor(performance.now() / 150) % totalFrames;
+    const fw = 443, fh = 887; // Full frame dimensions from the sheet
 
-    // Fixed sconce positions locked to background.png wall artwork:
-    // 1. Left Wall Sconce 1 (between left curtain & bookshelf): ~8.8% W, ~49% H
-    // 2. Left Wall Sconce 2 (between bookshelf & window): ~36.8% W, ~49% H
-    // 3. Right Wall Sconce (under portrait, left of cabinet): ~74.2% W, ~59% H
-    // 4. Bookshelf Candle (top shelf): ~18.0% W, ~28% H
+    // 3 candle sconce positions carefully matched to background.png:
+    // 1. On the bookshelf top-left shelf (small candle already visible) ~15.5% W, ~20% H
+    // 2. Wall area between bookshelf right edge and window left edge ~28% W, ~30% H
+    // 3. Wall area between portrait right edge and cabinet left edge ~78% W, ~32% H
     const sconcePositions = [
-      { x: W * 0.088, y: H * 0.49, size: 40 },
-      { x: W * 0.368, y: H * 0.49, size: 40 },
-      { x: W * 0.742, y: H * 0.59, size: 40 },
-      { x: W * 0.180, y: H * 0.28, size: 34 }
+      { x: W * 0.155, y: H * 0.20, size: 55 },
+      { x: W * 0.280, y: H * 0.28, size: 65 },
+      { x: W * 0.785, y: H * 0.28, size: 65 }
     ];
 
     ctx.save();
-    ctx.shadowColor = "rgba(255, 179, 71, 0.95)";
-    ctx.shadowBlur = 24;
+    // Warm candle glow
+    ctx.shadowColor = "rgba(255, 170, 60, 0.7)";
+    ctx.shadowBlur = 18;
 
     sconcePositions.forEach(pos => {
-      const cx = pos.x + px - pos.size / 2;
-      const cy = pos.y + py - pos.size / 2;
-      ctx.drawImage(img, col * fw, row * fh, fw, fh, cx, cy, pos.size, pos.size);
+      // The sconce "anchor point" is its bottom-center
+      // So we place it such that bottom-center aligns with the wall position
+      const drawW = pos.size;
+      const drawH = pos.size * (fh / fw); // Maintain aspect ratio (887/443 ≈ 2.0)
+      const cx = pos.x + px - drawW / 2;
+      const cy = pos.y + py - drawH + drawW * 0.3; // Anchor near upper-middle of sconce body
+      ctx.drawImage(img, frameIndex * fw, 0, fw, fh, cx, cy, drawW, drawH);
     });
 
     ctx.restore();
   }
 
-  // Layer 2: Continuous Single Floor Fire beside Cabinet (fire_sheet.png - 4x2 grid, 384x512 per frame)
+  // Layer 2: Continuous Floor Fire (fire_sheet.png)
+  // Sheet is 1536x1024 = 4 columns x 1 row = 4 frames of 384x1024 each.
+  // fire_sheet.png has proper RGBA alpha (colorType 6), no chroma key needed.
+  // Each frame shows the same fire base with a different flame shape above it.
+  // We anchor the fire base to the floor so it stays fixed — only the flame flickers above.
   function drawContinuousFire() {
     if (!roomAssetsLoaded.fireSheet) return;
     const img = getAsset("fireSheet");
@@ -995,28 +1014,29 @@
     const H = canvas.height || window.innerHeight;
     const aimX = isNaN(currentAimX) ? 0 : currentAimX;
     const aimY = isNaN(currentAimY) ? 0 : currentAimY;
-    // Parallax tracking locked 1:1 with background room wall
+    // Parallax EXACTLY matching background.png
     const px = aimX * 16;
     const py = aimY * 12;
 
-    // 4 columns x 2 rows = 384x512 per frame (6 active frames)
-    const activeFrames = [[0,0], [1,0], [2,0], [0,1], [1,1], [2,1]];
-    const frameIndex = Math.floor(performance.now() / 95) % activeFrames.length;
-    const cell = activeFrames[frameIndex];
-    const col = cell[0], row = cell[1];
-    const fw = 384, fh = 512;
+    // 4 animation frames in a single row (4 cols x 1 row)
+    const totalFrames = 4;
+    const frameIndex = Math.floor(performance.now() / 120) % totalFrames;
+    const fw = 384, fh = 1024; // Full frame dimensions from the sheet
 
-    // Red circle location on floor rug beside cabinet bottom legs (~76.5% width, ~91.5% height)
-    const fireW = 110, fireH = 110;
-    const fireX = W * 0.765 + px - fireW / 2;
-    const fireY = H * 0.915 + py - fireH * 0.85;
+    // Fire on the floor near the rug area beside the cabinet
+    // Position the fire so its BASE sits on the floor (~90% H),
+    // and the flame extends upward from there
+    const fireW = 70;
+    const fireH = fireW * (fh / fw); // Maintain aspect ratio (1024/384 ≈ 2.67)
+    const fireX = W * 0.68 + px - fireW / 2;
+    // Anchor the fire BOTTOM to the floor level
+    const fireY = H * 0.95 + py - fireH;
 
     ctx.save();
-    ctx.shadowColor = "rgba(255, 90, 25, 0.95)";
-    ctx.shadowBlur = 36;
-    ctx.globalCompositeOperation = "lighter";
+    ctx.shadowColor = "rgba(255, 100, 30, 0.8)";
+    ctx.shadowBlur = 30;
 
-    ctx.drawImage(img, col * fw, row * fh, fw, fh, fireX, fireY, fireW, fireH);
+    ctx.drawImage(img, frameIndex * fw, 0, fw, fh, fireX, fireY, fireW, fireH);
 
     ctx.restore();
   }
