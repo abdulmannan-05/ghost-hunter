@@ -769,7 +769,7 @@
     const entrance = ENTRANCE_TYPES[Math.floor(Math.random() * ENTRANCE_TYPES.length)];
     let gType = "standard";
     if (entrance === "edge") gType = "fast";
-    if (score >= MANGO_TARGET - 2 || (Math.random() < 0.25 && survivalTime > 25)) gType = "boss";
+    if (score >= MANGO_TARGET - 2 || (Math.random() < 0.25 && score >= 5)) gType = "boss";
 
     const g = {
       alive: true, dying: false, dieProgress: 0, spawnScale: 0,
