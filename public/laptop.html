@@ -869,29 +869,39 @@
 
   // Layer 0: Far Background Wall (bg_wall.png)
   function drawParallaxWall() {
-    const W = canvas.width, H = canvas.height;
-    const px = currentAimX * 14;
-    const py = currentAimY * 10;
+    const W = canvas.width || window.innerWidth;
+    const H = canvas.height || window.innerHeight;
+    const aimX = isNaN(currentAimX) ? 0 : currentAimX;
+    const aimY = isNaN(currentAimY) ? 0 : currentAimY;
+    const px = aimX * 14;
+    const py = aimY * 10;
+    const margin = 60;
 
-    if (roomAssetsLoaded.bgWall) {
-      const img = roomAssets.bgWall;
-      const margin = 50;
-      ctx.drawImage(img, -margin + px, -margin + py, W + margin * 2, H + margin * 2);
+    if (roomAssetsLoaded.bgWall && roomAssets.bgWall.complete && roomAssets.bgWall.naturalWidth > 0) {
+      ctx.drawImage(roomAssets.bgWall, -margin + px, -margin + py, W + margin * 2, H + margin * 2);
     } else {
-      ctx.fillStyle = "#0c0a14";
+      // Atmospheric rich dark purple wallpaper gradient fallback so canvas is NEVER blank/black!
+      const wallGrad = ctx.createLinearGradient(0, 0, 0, H);
+      wallGrad.addColorStop(0, "#1f1535");
+      wallGrad.addColorStop(0.5, "#140c24");
+      wallGrad.addColorStop(1, "#080512");
+      ctx.fillStyle = wallGrad;
       ctx.fillRect(0, 0, W, H);
     }
   }
 
   // Layer 1: Wall Portrait (prop_portrait.png)
   function drawParallaxPortrait() {
-    const W = canvas.width, H = canvas.height;
-    const px = currentAimX * 22;
-    const py = currentAimY * 14;
+    const W = canvas.width || window.innerWidth;
+    const H = canvas.height || window.innerHeight;
+    const aimX = isNaN(currentAimX) ? 0 : currentAimX;
+    const aimY = isNaN(currentAimY) ? 0 : currentAimY;
+    const px = aimX * 22;
+    const py = aimY * 14;
 
-    if (roomAssetsLoaded.portrait) {
+    if (roomAssetsLoaded.portrait && roomAssets.portrait.complete && roomAssets.portrait.naturalWidth > 0) {
       const img = roomAssets.portrait;
-      const w = 180, h = w * (img.height / img.width);
+      const w = 180, h = w * (img.naturalHeight / img.naturalWidth);
       const x = W * 0.76 + px - w / 2;
       const y = H * 0.18 + py - h / 2;
       ctx.save();
@@ -904,14 +914,17 @@
 
   // Layer 2: Room Furniture (prop_bookshelf.png & prop_cabinet.png)
   function drawParallaxFurniture() {
-    const W = canvas.width, H = canvas.height;
-    const px = currentAimX * 28;
-    const py = currentAimY * 18;
+    const W = canvas.width || window.innerWidth;
+    const H = canvas.height || window.innerHeight;
+    const aimX = isNaN(currentAimX) ? 0 : currentAimX;
+    const aimY = isNaN(currentAimY) ? 0 : currentAimY;
+    const px = aimX * 28;
+    const py = aimY * 18;
 
     // Bookshelf on left
-    if (roomAssetsLoaded.bookshelf) {
+    if (roomAssetsLoaded.bookshelf && roomAssets.bookshelf.complete && roomAssets.bookshelf.naturalWidth > 0) {
       const img = roomAssets.bookshelf;
-      const w = 240, h = w * (img.height / img.width);
+      const w = 240, h = w * (img.naturalHeight / img.naturalWidth);
       const x = W * 0.12 + px - w / 2;
       const y = H - h + py * 0.5;
       ctx.save();
@@ -922,9 +935,9 @@
     }
 
     // Cabinet in center bottom
-    if (roomAssetsLoaded.cabinet) {
+    if (roomAssetsLoaded.cabinet && roomAssets.cabinet.complete && roomAssets.cabinet.naturalWidth > 0) {
       const img = roomAssets.cabinet;
-      const w = 260, h = w * (img.height / img.width);
+      const w = 260, h = w * (img.naturalHeight / img.naturalWidth);
       const x = W * 0.50 + px - w / 2;
       const y = H - h + 30 + py * 0.5;
       ctx.save();
@@ -937,11 +950,14 @@
 
   // Layer 4: Foreground Framing Curtains (foreground_curtains.png)
   function drawParallaxCurtains() {
-    const W = canvas.width, H = canvas.height;
-    const px = currentAimX * 38;
-    const py = currentAimY * 24;
+    const W = canvas.width || window.innerWidth;
+    const H = canvas.height || window.innerHeight;
+    const aimX = isNaN(currentAimX) ? 0 : currentAimX;
+    const aimY = isNaN(currentAimY) ? 0 : currentAimY;
+    const px = aimX * 38;
+    const py = aimY * 24;
 
-    if (roomAssetsLoaded.fgCurtains) {
+    if (roomAssetsLoaded.fgCurtains && roomAssets.fgCurtains.complete && roomAssets.fgCurtains.naturalWidth > 0) {
       const img = roomAssets.fgCurtains;
       const margin = 60;
       ctx.save();
