@@ -807,10 +807,12 @@
     }
   }
 
-  function crosshairPos() {
+  function updateAim() {
     currentAimX += (targetAimX - currentAimX) * 0.35;
     currentAimY += (targetAimY - currentAimY) * 0.35;
+  }
 
+  function crosshairPos() {
     const margin = 60;
     const cx = ((currentAimX + 1) / 2) * (canvas.width - margin * 2) + margin;
     const cy = ((currentAimY + 1) / 2) * (canvas.height - margin * 2) + margin;
@@ -974,14 +976,14 @@
     const frameIndex = Math.floor(performance.now() / 150) % totalFrames;
     const fw = 443, fh = 887; // Full frame dimensions from the sheet
 
-    // 3 candle sconce positions carefully matched to background.png:
-    // 1. On the bookshelf top-left shelf (small candle already visible) ~15.5% W, ~20% H
-    // 2. Wall area between bookshelf right edge and window left edge ~28% W, ~30% H
-    // 3. Wall area between portrait right edge and cabinet left edge ~78% W, ~32% H
+    // 3 candle sconce positions matched to background.png wall artwork:
+    // 1. Left wall between curtain and bookshelf: ~6% W, ~38% H
+    // 2. Wall between bookshelf right edge and window left edge: ~27% W, ~38% H
+    // 3. Wall between portrait and cabinet: ~80% W, ~38% H
     const sconcePositions = [
-      { x: W * 0.155, y: H * 0.20, size: 55 },
-      { x: W * 0.280, y: H * 0.28, size: 65 },
-      { x: W * 0.785, y: H * 0.28, size: 65 }
+      { x: W * 0.06, y: H * 0.38, size: 50 },
+      { x: W * 0.27, y: H * 0.38, size: 50 },
+      { x: W * 0.80, y: H * 0.38, size: 50 }
     ];
 
     ctx.save();
@@ -990,12 +992,12 @@
     ctx.shadowBlur = 18;
 
     sconcePositions.forEach(pos => {
-      // The sconce "anchor point" is its bottom-center
-      // So we place it such that bottom-center aligns with the wall position
+      // Maintain the sprite's natural aspect ratio (887/443 ≈ 2:1 tall)
       const drawW = pos.size;
-      const drawH = pos.size * (fh / fw); // Maintain aspect ratio (887/443 ≈ 2.0)
+      const drawH = pos.size * (fh / fw);
+      // Anchor the sconce so the bottom-center sits at the wall position
       const cx = pos.x + px - drawW / 2;
-      const cy = pos.y + py - drawH + drawW * 0.3; // Anchor near upper-middle of sconce body
+      const cy = pos.y + py - drawH * 0.65; // Center the sconce body on the wall point
       ctx.drawImage(img, frameIndex * fw, 0, fw, fh, cx, cy, drawW, drawH);
     });
 
@@ -1023,14 +1025,13 @@
     const frameIndex = Math.floor(performance.now() / 120) % totalFrames;
     const fw = 384, fh = 1024; // Full frame dimensions from the sheet
 
-    // Fire on the floor near the rug area beside the cabinet
-    // Position the fire so its BASE sits on the floor (~90% H),
-    // and the flame extends upward from there
-    const fireW = 70;
+    // Fire on the rug/floor near the center-right of the room
+    // Position the fire so its BASE sits on the floor
+    const fireW = 55;
     const fireH = fireW * (fh / fw); // Maintain aspect ratio (1024/384 ≈ 2.67)
-    const fireX = W * 0.68 + px - fireW / 2;
-    // Anchor the fire BOTTOM to the floor level
-    const fireY = H * 0.95 + py - fireH;
+    const fireX = W * 0.50 + px - fireW / 2;
+    // Anchor the fire BOTTOM to the floor
+    const fireY = H * 0.98 + py - fireH;
 
     ctx.save();
     ctx.shadowColor = "rgba(255, 100, 30, 0.8)";
@@ -1320,6 +1321,10 @@
   function loop(now) {
     const dt = isPaused ? 0 : Math.min(0.05, (now - lastFrameTime) / 1000);
     lastFrameTime = now;
+
+    // Update aim FIRST so all layers (background, candles, fire, crosshair)
+    // use the same frame's aim data — no 1-frame lag
+    updateAim();
 
     // Decay crosshair recoil animation
     crosshairRecoil += (0 - crosshairRecoil) * 0.18;
