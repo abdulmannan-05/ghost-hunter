@@ -350,9 +350,8 @@
     bookshelf: new Image(),
     cabinet: new Image(),
     portrait: new Image(),
-    ghostStandard: new Image(),
-    ghostFast: new Image(),
-    ghostBoss: new Image()
+    ghost: new Image(),
+    candleSheet: new Image()
   };
 
   const roomAssetsProcessed = {};
@@ -418,9 +417,8 @@
   roomAssets.cabinet.src = "assets/images/prop_cabinet.png";
   roomAssets.portrait.src = "assets/images/prop_portrait.png";
 
-  roomAssets.ghostStandard.src = "assets/sprites/ghost_standard.png";
-  roomAssets.ghostFast.src = "assets/sprites/ghost_fast.png";
-  roomAssets.ghostBoss.src = "assets/sprites/ghost_boss.png";
+  roomAssets.ghost.src = "assets/sprites/ghost.png";
+  roomAssets.candleSheet.src = "assets/sprites/candle_sheet.png";
 
   // ===================================================================
   // CONNECTION + PAIRING
@@ -1011,6 +1009,46 @@
     }
   }
 
+  // Layer 2.5: Animated 3x2 Candle Sheet Renderer (candle_sheet.png)
+  function drawAnimatedCandles() {
+    if (!roomAssetsLoaded.candleSheet) return;
+    const img = getAsset("candleSheet");
+    const W = canvas.width || window.innerWidth;
+    const H = canvas.height || window.innerHeight;
+    const aimX = isNaN(currentAimX) ? 0 : currentAimX;
+    const aimY = isNaN(currentAimY) ? 0 : currentAimY;
+    const px = aimX * 28;
+    const py = aimY * 18;
+
+    // 6 animated frames (3 cols x 2 rows, 512x512 per frame)
+    const totalFrames = 6;
+    const frameIndex = Math.floor(performance.now() / 120) % totalFrames;
+    const col = frameIndex % 3;
+    const row = Math.floor(frameIndex / 3);
+    const fw = 512, fh = 512;
+
+    // Candle 1 on Cabinet top
+    const c1W = 80, c1H = 80;
+    const c1X = W * 0.44 + px - c1W / 2;
+    const c1Y = H - 185 + py * 0.5;
+
+    // Candle 2 on Bookshelf shelf
+    const c2W = 70, c2H = 70;
+    const c2X = W * 0.18 + px - c2W / 2;
+    const c2Y = H - 245 + py * 0.5;
+
+    ctx.save();
+    ctx.shadowColor = "rgba(255,179,71,0.95)";
+    ctx.shadowBlur = 30;
+
+    // Candle 1
+    ctx.drawImage(img, col * fw, row * fh, fw, fh, c1X, c1Y, c1W, c1H);
+    // Candle 2
+    ctx.drawImage(img, col * fw, row * fh, fw, fh, c2X, c2Y, c2W, c2H);
+
+    ctx.restore();
+  }
+
 
 
   function drawFog() {
@@ -1104,12 +1142,11 @@
     ctx.globalAlpha = Math.max(0, alpha);
     ctx.scale(scale, scale);
 
-    const spriteKey = g.type === "boss" ? "ghostBoss" : (g.type === "fast" ? "ghostFast" : "ghostStandard");
-    const ghostSprite = getAsset(spriteKey);
-    const spriteLoaded = roomAssetsLoaded[spriteKey];
+    const ghostSprite = getAsset("ghost");
+    const spriteLoaded = roomAssetsLoaded.ghost;
 
     if (spriteLoaded) {
-      const dim = getAssetDim(spriteKey);
+      const dim = getAssetDim("ghost");
       const renderW = g.radius * 2.4;
       const renderH = renderW * dim.ratio;
 
@@ -1317,6 +1354,9 @@
 
     // LAYER 2: Midground Furniture Props (prop_bookshelf.png & prop_cabinet.png)
     drawParallaxFurniture();
+
+    // LAYER 2.5: Animated Flickering Candles (candle_sheet.png)
+    drawAnimatedCandles();
 
     // Ambient Fog Particles
     drawFog();
