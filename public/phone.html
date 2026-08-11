@@ -422,25 +422,21 @@
   });
 
   // ===================================================================
-  // TOUCHPAD AIM CONTROL
+  // TOUCHPAD AIM CONTROL (multi-touch aware)
   // ===================================================================
-  // The touchpad tracks finger position and maps it to normalized
-  // aim coordinates (-1 to 1) which are sent to the laptop.
-  // Dragging from center to edge = full range.
+  // Track the touchpad finger by its unique Touch.identifier so that
+  // a second finger can tap FIRE (or any button) at the same time.
 
   let aimX = 0, aimY = 0;
-  let isTouching = false;
+  let touchpadTouchId = null; // identifier of the finger on the touchpad
   let lastAimSendTime = 0;
 
   function getTouchAim(touch) {
     const rect = touchpad.getBoundingClientRect();
-    // Map touch position to -1..1 relative to touchpad center
     const relX = (touch.clientX - rect.left) / rect.width;
     const relY = (touch.clientY - rect.top) / rect.height;
-    // Convert 0..1 to -1..1
     let x = (relX * 2 - 1) * userSensitivity;
     let y = (relY * 2 - 1) * userSensitivity;
-    // Clamp
     x = Math.max(-1, Math.min(1, x));
     y = Math.max(-1, Math.min(1, y));
     return { x, y };
@@ -454,7 +450,6 @@
   }
 
   function updateCrosshairIndicator() {
-    // Show where crosshair is aimed within the touchpad
     const pctX = (aimX + 1) / 2 * 100;
     const pctY = (aimY + 1) / 2 * 100;
     touchpadCrosshair.style.left = pctX + "%";
@@ -463,7 +458,7 @@
 
   function sendAim() {
     const now = performance.now();
-    if (now - lastAimSendTime > 25) { // ~40Hz
+    if (now - lastAimSendTime > 25) {
       lastAimSendTime = now;
       const sx = Math.round(aimX * 1000) / 1000;
       const sy = Math.round(aimY * 1000) / 1000;
@@ -472,23 +467,34 @@
     }
   }
 
-  // Touch events on the touchpad
+  // Find a specific touch by identifier in a TouchList
+  function findTouch(touchList, id) {
+    for (let i = 0; i < touchList.length; i++) {
+      if (touchList[i].identifier === id) return touchList[i];
+    }
+    return null;
+  }
+
   touchpad.addEventListener("touchstart", (e) => {
     e.preventDefault();
-    const touch = e.touches[0];
-    isTouching = true;
-    const aim = getTouchAim(touch);
-    aimX = aim.x;
-    aimY = aim.y;
-    updateTouchDot(touch);
-    updateCrosshairIndicator();
-    sendAim();
+    // Only claim the first finger that lands on the touchpad
+    if (touchpadTouchId === null) {
+      const touch = e.changedTouches[0];
+      touchpadTouchId = touch.identifier;
+      const aim = getTouchAim(touch);
+      aimX = aim.x;
+      aimY = aim.y;
+      updateTouchDot(touch);
+      updateCrosshairIndicator();
+      sendAim();
+    }
   }, { passive: false });
 
   touchpad.addEventListener("touchmove", (e) => {
     e.preventDefault();
-    if (!isTouching) return;
-    const touch = e.touches[0];
+    if (touchpadTouchId === null) return;
+    const touch = findTouch(e.touches, touchpadTouchId);
+    if (!touch) return;
     const aim = getTouchAim(touch);
     aimX = aim.x;
     aimY = aim.y;
@@ -499,14 +505,23 @@
 
   touchpad.addEventListener("touchend", (e) => {
     e.preventDefault();
-    isTouching = false;
-    touchDot.style.display = "none";
-    // Keep last aim position (don't reset to center)
+    for (let i = 0; i < e.changedTouches.length; i++) {
+      if (e.changedTouches[i].identifier === touchpadTouchId) {
+        touchpadTouchId = null;
+        touchDot.style.display = "none";
+        break;
+      }
+    }
   }, { passive: false });
 
   touchpad.addEventListener("touchcancel", (e) => {
-    isTouching = false;
-    touchDot.style.display = "none";
+    for (let i = 0; i < e.changedTouches.length; i++) {
+      if (e.changedTouches[i].identifier === touchpadTouchId) {
+        touchpadTouchId = null;
+        touchDot.style.display = "none";
+        break;
+      }
+    }
   });
 
   // ===================================================================
@@ -529,7 +544,8 @@
   }
 
   if (pauseBtn) {
-    pauseBtn.addEventListener("click", () => {
+    pauseBtn.addEventListener("touchstart", (e) => {
+      e.preventDefault();
       isPhonePaused = !isPhonePaused;
       if (isPhonePaused) {
         send({ type: "pause" });
@@ -546,20 +562,33 @@
         fireBtn.disabled = false;
         fireBtn.style.opacity = "1";
       }
-    });
+    }, { passive: false });
   }
 
   // ===================================================================
-  // FIRE
+  // FIRE (touchstart for instant multi-touch response)
   // ===================================================================
-  fireBtn.addEventListener("click", () => {
+  function doFire() {
     if (isPhonePaused) return;
     send({ type: "fire" });
     const clone = shootSound.cloneNode();
     clone.volume = 0.5;
     clone.play().catch(() => {});
     if (navigator.vibrate) navigator.vibrate(35);
-  });
+    // Visual press feedback
+    fireBtn.style.transform = "translateY(4px)";
+    fireBtn.style.boxShadow = "0 2px 0 #a3131c";
+    setTimeout(() => {
+      fireBtn.style.transform = "";
+      fireBtn.style.boxShadow = "";
+    }, 80);
+  }
+
+  fireBtn.addEventListener("touchstart", (e) => {
+    e.preventDefault(); // prevent click + ghost click
+    e.stopPropagation(); // don't let touchpad grab this touch
+    doFire();
+  }, { passive: false });
 
   // ===================================================================
   // PLAY AGAIN
@@ -573,7 +602,6 @@
     miniAmmoEl.textContent = "5";
     miniAmmoEl.style.color = "var(--ghost)";
     miniScoreEl.textContent = "0";
-    // Reset aim to center
     aimX = 0;
     aimY = 0;
     updateCrosshairIndicator();
@@ -585,9 +613,7 @@
   // FORCE LANDSCAPE HINT (on portrait screens)
   // ===================================================================
   function checkOrientation() {
-    // Only relevant when step-play is visible
     if (!stepPlay.classList.contains("active")) return;
-    // On small screens in portrait, suggest rotating
     if (window.innerWidth < window.innerHeight && window.innerWidth < 500) {
       touchpad.querySelector("#touchpad-label").textContent = "↻ Rotate phone to landscape";
     } else {
