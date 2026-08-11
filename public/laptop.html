@@ -1614,7 +1614,7 @@
       }
 
       // Draw active countdown timer badge right above the creature
-      if (!g.dying) {
+      if (!g.dying && gameStarted) {
         ctx.save();
         ctx.scale(1 / Math.max(0.1, scale), 1 / Math.max(0.1, scale)); // crisp unscaled text
         ctx.font = "900 22px 'Outfit', sans-serif";
@@ -1924,15 +1924,27 @@
     handleFire();
   });
 
-  // Ambient Lobby Ghosts (2 ghosts wandering on starting screen so it doesn't feel empty)
+  // Ambient Lobby Ghosts (5 animated floating ghosts on starting screen so it feels alive and dynamic!)
   const lobbyGhosts = [
     {
-      x: 320, y: 380, vx: 1.2, vy: 0.7, radius: 44, bobPhase: 0,
-      type: "normal", timer: 0, spawnScale: 1, alive: true, dying: false, hitTimer: 0
+      x: 280, y: 280, vx: 1.4, vy: 0.8, radius: 52, bobPhase: 0, flyPhase: 0,
+      type: "flyer", timer: 0, spawnScale: 1, alive: true, dying: false, hitTimer: 0
     },
     {
-      x: 1250, y: 420, vx: -1.0, vy: -0.8, radius: 48, bobPhase: 2.1,
+      x: 1350, y: 320, vx: -1.2, vy: 0.9, radius: 60, bobPhase: 1.5, flyPhase: 1.0,
+      type: "fury", timer: 0, spawnScale: 1, alive: true, dying: false, hitTimer: 0
+    },
+    {
+      x: 520, y: 450, vx: -1.1, vy: -0.7, radius: 46, bobPhase: 3.1, flyPhase: 2.0,
+      type: "standard", timer: 0, spawnScale: 1, alive: true, dying: false, hitTimer: 0
+    },
+    {
+      x: 1100, y: 490, vx: 1.5, vy: -0.9, radius: 48, bobPhase: 4.2, flyPhase: 3.0,
       type: "fast", timer: 0, spawnScale: 1, alive: true, dying: false, hitTimer: 0
+    },
+    {
+      x: 820, y: 360, vx: 0.9, vy: -1.2, radius: 54, bobPhase: 5.5, flyPhase: 4.0,
+      type: "bomber", fuseTimer: 5.0, timer: 0, spawnScale: 1, alive: true, dying: false, hitTimer: 0
     }
   ];
 
@@ -1942,12 +1954,19 @@
 
     lobbyGhosts.forEach(g => {
       g.bobPhase += dt * 2.2;
+      g.flyPhase += dt * 2.5;
       g.x += g.vx;
       g.y += g.vy;
 
-      const pad = 120;
+      if (g.type === "flyer") {
+        g.vy += Math.sin(g.flyPhase) * 0.25;
+      }
+
+      const pad = 100;
       if (g.x < pad || g.x > W - pad) g.vx *= -1;
-      if (g.y < pad + 80 || g.y > H - pad - 120) g.vy *= -1;
+      if (g.y < pad + 60 || g.y > H - pad - 100) g.vy *= -1;
+      g.x = Math.max(pad, Math.min(W - pad, g.x));
+      g.y = Math.max(pad + 60, Math.min(H - pad - 100, g.y));
     });
   }
 
