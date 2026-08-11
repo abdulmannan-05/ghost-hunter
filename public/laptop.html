@@ -1139,6 +1139,7 @@
   let currentSpeedMult = 1;
   let nextBomberTime = 20;
   let nextFlyerTime = 10;
+  let nextFuryTime = 15;
 
   function waveState(t) {
     if (t < 15) return { maxGhosts: 1, speedMult: 1.0 };
@@ -1155,6 +1156,7 @@
     spawnCooldown = 0;
     nextBomberTime = 20;
     nextFlyerTime = 10;
+    nextFuryTime = 15;
   }
 
   function trySpawnWave(dt) {
@@ -1166,6 +1168,12 @@
     if (survivalTime >= nextFlyerTime) {
       spawnGhost("flyer");
       nextFlyerTime += 10;
+    }
+
+    // Scheduled Fury Specter spawns strictly every 15s (t = 15s, 30s, 45s, 60s...)
+    if (survivalTime >= nextFuryTime) {
+      spawnGhost("fury");
+      nextFuryTime += 15;
     }
 
     // Scheduled Bomber Ghost spawns strictly at 20s, 40s, 60s, 80s...
@@ -1216,9 +1224,9 @@
     let gType = forceType || "standard";
     if (!forceType) {
       const rand = Math.random();
-      if (rand < 0.25 && score >= 3) gType = "fury";
+      if (rand < 0.35) gType = "fury";
       else if (entrance === "edge") gType = "fast";
-      else if (score >= MANGO_TARGET - 2 || (rand < 0.35 && score >= 5)) gType = "boss";
+      else if (score >= MANGO_TARGET - 2 || rand < 0.6) gType = "boss";
     }
 
     const g = {
