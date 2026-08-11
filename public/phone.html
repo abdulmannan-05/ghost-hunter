@@ -56,16 +56,16 @@
   }
   .hidden{display:none}
 
-  /* NAME INPUT */
-  #name-input{
-    font-size:20px; font-weight:700; text-align:center; letter-spacing:2px;
+  /* NAME & COMPANY INPUTS */
+  #name-input, #company-input {
+    font-size:16px; font-weight:700; text-align:center; letter-spacing:1px;
     background:var(--panel); color:#eaf4ff; border:2px solid var(--line);
-    border-radius:12px; padding:14px 20px; width:100%; max-width:280px;
-    margin-bottom:16px; outline:none; transition:border-color 200ms;
+    border-radius:12px; padding:14px 18px; width:100%; max-width:300px;
+    margin-bottom:12px; outline:none; transition:border-color 200ms;
     font-family:'Outfit','Helvetica Neue',Arial,sans-serif;
   }
-  #name-input:focus{border-color:var(--ghost)}
-  #name-input::placeholder{color:var(--ink); opacity:.6}
+  #name-input:focus, #company-input:focus { border-color:var(--ghost) }
+  #name-input::placeholder, #company-input::placeholder { color:var(--ink); opacity:.6; font-weight:500 }
 
   /* MANGO BADGE */
   #mango-badge{
@@ -91,8 +91,9 @@
 
   <!-- STEP: NAME ENTRY -->
   <div id="step-name">
-    <p style="color:var(--ink); font-size:13px; max-width:280px; margin-bottom:14px;">Enter your hunter name to join the battle:</p>
-    <input type="text" id="name-input" placeholder="Your Name" maxlength="16" autocomplete="off" spellcheck="false">
+    <p style="color:var(--ink); font-size:13px; max-width:300px; margin-bottom:14px;">Enter your details to join the hunt:</p>
+    <input type="text" id="name-input" placeholder="Person Name" autocomplete="off" spellcheck="false">
+    <input type="text" id="company-input" placeholder="Company Name" autocomplete="off" spellcheck="false">
     <button id="name-btn">START HUNTING 🎯</button>
   </div>
 
@@ -159,6 +160,7 @@
   const switchHttpsBtn = document.getElementById("switch-https-btn");
   const stepName = document.getElementById("step-name");
   const nameInput = document.getElementById("name-input");
+  const companyInput = document.getElementById("company-input");
   const nameBtn = document.getElementById("name-btn");
   const stepPermission = document.getElementById("step-permission");
   const stepCalibrate = document.getElementById("step-calibrate");
@@ -196,6 +198,7 @@
   let invertX = false;
   let invertY = false;
   let playerName = "Hunter";
+  let companyName = "";
 
   sensSlider.addEventListener("input", (e) => {
     userSensitivity = parseFloat(e.target.value);
@@ -271,34 +274,51 @@
     if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(msg));
   }
 
-  // --- STEP: NAME ENTRY ---
+  // --- STEP: NAME & COMPANY ENTRY ---
   const nameErrorEl = document.createElement("div");
   nameErrorEl.style.cssText = "color:var(--red); font-size:12px; margin-bottom:10px; display:none;";
   stepName.insertBefore(nameErrorEl, nameInput);
 
   nameBtn.addEventListener("click", () => {
-    const val = (nameInput.value || "").trim();
-    if (!val) {
-      nameInput.style.borderColor = "var(--red)";
-      nameErrorEl.textContent = "⚠️ Please enter your name to start!";
+    const valName = (nameInput.value || "").trim();
+    const valCompany = (companyInput.value || "").trim();
+
+    if (!valName || !valCompany) {
+      if (!valName) nameInput.style.borderColor = "var(--red)";
+      if (!valCompany) companyInput.style.borderColor = "var(--red)";
+      nameErrorEl.textContent = "⚠️ Please enter both Person Name & Company Name!";
       nameErrorEl.style.display = "block";
-      nameInput.focus();
+      if (!valName) nameInput.focus(); else companyInput.focus();
       return;
     }
+
     nameErrorEl.style.display = "none";
-    nameInput.style.borderColor = "var(--ghost)";
-    playerName = val.slice(0, 16);
+    nameInput.style.borderColor = "var(--line)";
+    companyInput.style.borderColor = "var(--line)";
+
+    // No character or word limits!
+    playerName = valName;
+    companyName = valCompany;
+
     stepName.classList.add("hidden");
     stepPermission.classList.remove("hidden");
-    send({ type: "set-name", name: playerName });
+    send({ type: "set-name", name: playerName, company: companyName });
   });
-  nameInput.addEventListener("input", () => {
-    if ((nameInput.value || "").trim()) {
+
+  const clearErr = () => {
+    if ((nameInput.value || "").trim() && (companyInput.value || "").trim()) {
       nameErrorEl.style.display = "none";
-      nameInput.style.borderColor = "var(--ghost)";
+      nameInput.style.borderColor = "var(--line)";
+      companyInput.style.borderColor = "var(--line)";
     }
-  });
+  };
+  nameInput.addEventListener("input", clearErr);
+  companyInput.addEventListener("input", clearErr);
+
   nameInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") companyInput.focus();
+  });
+  companyInput.addEventListener("keydown", (e) => {
     if (e.key === "Enter") nameBtn.click();
   });
 
