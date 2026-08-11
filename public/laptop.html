@@ -327,7 +327,7 @@
   <div id="hit-flash"></div>
   <div id="damage-flash"></div>
   <div id="mango-flash"></div>
-  <div id="bomber-warning"><span class="warn-icon">💀</span><span class="warn-text">BOMBER INCOMING!</span><span class="warn-timer" id="bomber-timer">3.0</span></div>
+  <div id="bomber-warning"><span class="warn-icon">💀</span><span class="warn-text">BOMBER INCOMING!</span><span class="warn-timer" id="bomber-timer">5.0</span></div>
   <canvas id="game-canvas"></canvas>
 </div>
 
@@ -1169,7 +1169,7 @@
       alive: true, dying: false, dieProgress: 0, spawnScale: 0,
       radius: gType === "boss" ? 64 : (gType === "bomber" ? 58 : (gType === "fast" ? 48 : 54)),
       entrance, phase: "entering", timer: 0, type: gType,
-      fuseTimer: gType === "bomber" ? 3.0 : 0,
+      fuseTimer: gType === "bomber" ? 5.0 : 0,
       x: 0, y: 0, vx: 0, vy: 0, bobPhase: Math.random() * Math.PI * 2,
       hitTimer: 0
     };
@@ -1779,9 +1779,7 @@
         soundMgr.play("win");
         flashMango();
         sendToPhone({ type: "mango-reached" });
-        setTimeout(() => {
-          triggerGameOver();
-        }, 800);
+        // Game continues endless mode — keep hunting!
       }
     }
 
