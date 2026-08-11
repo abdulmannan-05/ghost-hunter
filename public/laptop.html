@@ -509,7 +509,8 @@
     fireSheet: new Image(),
     shotgun: new Image(),
     blastGhost: new Image(),
-    flyerGhost: new Image()
+    flyerGhost: new Image(),
+    furyGhost: new Image()
   };
 
   const roomAssetsProcessed = {};
@@ -519,6 +520,7 @@
     if (key === "background") return img; // Main room backdrop stays solid
     if (key === "fireSheet") return img;  // fire_sheet.png already has RGBA alpha channel
     if (key === "flyerGhost") return img; // flying-ghost.png already has native RGBA alpha channel
+    if (key === "furyGhost") return img;  // Fury.png already has native RGBA alpha channel
 
     // Shotgun sprite: cyan (#00FFFF) background chroma key
     if (key === "shotgun") {
@@ -647,6 +649,7 @@
   roomAssets.shotgun.src = "assets/sprites/shortgun-sprite.png";
   roomAssets.blastGhost.src = "assets/sprites/blasting-ghost.png";
   roomAssets.flyerGhost.src = "assets/sprites/flying-ghost.png";
+  roomAssets.furyGhost.src = "assets/sprites/Fury.png";
 
   // ===================================================================
   // CONNECTION + PAIRING
@@ -1175,13 +1178,15 @@
     const entrance = ENTRANCE_TYPES[Math.floor(Math.random() * ENTRANCE_TYPES.length)];
     let gType = forceType || "standard";
     if (!forceType) {
-      if (entrance === "edge") gType = "fast";
-      if (score >= MANGO_TARGET - 2 || (Math.random() < 0.25 && score >= 5)) gType = "boss";
+      const rand = Math.random();
+      if (rand < 0.25 && score >= 3) gType = "fury";
+      else if (entrance === "edge") gType = "fast";
+      else if (score >= MANGO_TARGET - 2 || (rand < 0.35 && score >= 5)) gType = "boss";
     }
 
     const g = {
       alive: true, dying: false, dieProgress: 0, spawnScale: 0,
-      radius: gType === "boss" ? 64 : (gType === "bomber" ? 58 : (gType === "flyer" ? 50 : (gType === "fast" ? 48 : 54))),
+      radius: gType === "boss" ? 64 : (gType === "fury" ? 62 : (gType === "bomber" ? 58 : (gType === "flyer" ? 50 : (gType === "fast" ? 48 : 54)))),
       entrance, phase: "entering", timer: 0, type: gType,
       fuseTimer: gType === "bomber" ? 5.0 : 0,
       flyPhase: Math.random() * Math.PI * 2,
@@ -1525,7 +1530,36 @@
     const ghostSprite = getAsset("ghost");
     const spriteLoaded = roomAssetsLoaded.ghost;
 
-    if (g.type === "flyer" && roomAssetsLoaded.flyerGhost) {
+    if (g.type === "fury" && roomAssetsLoaded.furyGhost) {
+      const furySprite = getAsset("furyGhost");
+      const dim = getAssetDim("furyGhost"); // 440x448 px
+      const renderW = g.radius * 2.5;
+      const renderH = renderW * dim.ratio;
+
+      // Ethereal glowing spectral cyan/teal aura
+      const pulse = Math.sin(performance.now() / 60) * 16;
+      ctx.shadowColor = g.hitTimer > 0 ? "rgba(255,255,255,1.0)" : "rgba(30, 235, 210, 0.95)";
+      ctx.shadowBlur = 42 + pulse;
+
+      ctx.drawImage(furySprite, -renderW / 2, -renderH / 2, renderW, renderH);
+
+      if (g.hitTimer > 0) {
+        ctx.globalCompositeOperation = "lighter";
+        ctx.globalAlpha = Math.max(0, g.hitTimer * 2.5);
+        ctx.drawImage(furySprite, -renderW / 2, -renderH / 2, renderW, renderH);
+      }
+
+      // Luminous spectral mist overlay
+      if (!g.dying) {
+        ctx.save();
+        ctx.globalCompositeOperation = "lighter";
+        ctx.globalAlpha = 0.35 + Math.sin(performance.now() / 90) * 0.15;
+        ctx.shadowColor = "rgba(0, 255, 230, 0.9)";
+        ctx.shadowBlur = 55;
+        ctx.drawImage(furySprite, -renderW / 2, -renderH / 2, renderW, renderH);
+        ctx.restore();
+      }
+    } else if (g.type === "flyer" && roomAssetsLoaded.flyerGhost) {
       const flyerSprite = getAsset("flyerGhost");
       // 4 horizontal frames of 81x71 px each
       const frameW = 81;
