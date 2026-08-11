@@ -22,32 +22,59 @@ app.use((req, res, next) => {
 app.use(express.static(path.join(__dirname, "public")));
 
 // ===================================================================
-// SQLITE DATABASE ENGINE
+// DUAL DATABASE ENGINE (Cloud PostgreSQL on Render/Supabase OR Local SQLite)
 // ===================================================================
+const { Pool } = require("pg");
 const Database = require("better-sqlite3");
 
 const DB_DIR = path.join(__dirname, "public", "database");
 if (!fs.existsSync(DB_DIR)) fs.mkdirSync(DB_DIR, { recursive: true });
-
-const DB_PATH = path.join(DB_DIR, "ghost_hunter.db");
 const CSV_PATH = path.join(DB_DIR, "Ghost_Hunter-Leaderboard - Sheet1.csv");
 
-const db = new Database(DB_PATH);
-db.pragma("journal_mode = WAL"); // High performance Write-Ahead Logging
+const DATABASE_URL = process.env.DATABASE_URL || process.env.POSTGRES_URL;
 
-// Initialize table schema
-db.exec(`
-    CREATE TABLE IF NOT EXISTS scores (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        timestamp TEXT NOT NULL,
-        name TEXT NOT NULL,
-        company TEXT,
-        score INTEGER NOT NULL,
-        result TEXT NOT NULL
-    )
-`);
+let pgPool = null;
+let sqliteDb = null;
 
-console.log("[SQLite] Database initialized at:", DB_PATH);
+if (DATABASE_URL) {
+    console.log("[DB] Initializing Cloud PostgreSQL database connection...");
+    pgPool = new Pool({
+        connectionString: DATABASE_URL,
+        ssl: DATABASE_URL.includes("localhost") ? false : { rejectUnauthorized: false }
+    });
+
+    pgPool.query(`
+        CREATE TABLE IF NOT EXISTS scores (
+            id SERIAL PRIMARY KEY,
+            timestamp TEXT NOT NULL,
+            name TEXT NOT NULL,
+            company TEXT,
+            score INTEGER NOT NULL,
+            result TEXT NOT NULL
+        );
+    `).then(() => {
+        console.log("[DB] Cloud PostgreSQL scores table verified.");
+    }).catch(err => {
+        console.error("[DB] Error setting up PostgreSQL table:", err.message);
+    });
+} else {
+    console.log("[DB] No DATABASE_URL set. Initializing local SQLite database...");
+    const DB_PATH = path.join(DB_DIR, "ghost_hunter.db");
+    sqliteDb = new Database(DB_PATH);
+    sqliteDb.pragma("journal_mode = WAL");
+
+    sqliteDb.exec(`
+        CREATE TABLE IF NOT EXISTS scores (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            timestamp TEXT NOT NULL,
+            name TEXT NOT NULL,
+            company TEXT,
+            score INTEGER NOT NULL,
+            result TEXT NOT NULL
+        )
+    `);
+    console.log("[DB] Local SQLite initialized at:", DB_PATH);
+}
 
 // Helper: escape a CSV field
 function csvEscape(val) {
@@ -58,61 +85,59 @@ function csvEscape(val) {
     return s;
 }
 
-// Auto-migrate legacy CSV data into SQLite if table is currently empty
-try {
-    const countRow = db.prepare("SELECT COUNT(*) AS count FROM scores").get();
-    if (countRow.count === 0 && fs.existsSync(CSV_PATH)) {
-        const content = fs.readFileSync(CSV_PATH, "utf8");
-        const lines = content.trim().split("\n");
-        const insertStmt = db.prepare("INSERT INTO scores (timestamp, name, company, score, result) VALUES (?, ?, ?, ?, ?)");
-        let migratedCount = 0;
-        
-        for (let i = 1; i < lines.length; i++) {
-            const line = lines[i].trim();
-            if (!line) continue;
-            const cols = [];
-            let current = "";
-            let inQuotes = false;
-            for (let c = 0; c < line.length; c++) {
-                if (inQuotes) {
-                    if (line[c] === '"' && line[c + 1] === '"') {
-                        current += '"';
-                        c++;
-                    } else if (line[c] === '"') {
-                        inQuotes = false;
-                    } else {
-                        current += line[c];
-                    }
-                } else {
-                    if (line[c] === '"') {
-                        inQuotes = true;
-                    } else if (line[c] === ',') {
-                        cols.push(current);
-                        current = "";
-                    } else {
-                        current += line[c];
-                    }
-                }
-            }
-            cols.push(current);
-
-            const ts = cols[0] || new Date().toISOString();
-            const nm = cols[1] || "Unknown";
-            const comp = cols[2] || "";
-            const sc = parseInt(cols[3]) || 0;
-            const res = cols[4] || "loss";
-
-            insertStmt.run(ts, nm, comp, sc, res);
-            migratedCount++;
-        }
-        console.log(`[SQLite] Migrated ${migratedCount} existing scores from CSV into database.`);
+// Database Helpers
+async function saveScoreToDb(timestamp, name, company, score, result) {
+    if (pgPool) {
+        await pgPool.query(
+            "INSERT INTO scores (timestamp, name, company, score, result) VALUES ($1, $2, $3, $4, $5)",
+            [timestamp, name, company, score, result]
+        );
+    } else if (sqliteDb) {
+        const stmt = sqliteDb.prepare("INSERT INTO scores (timestamp, name, company, score, result) VALUES (?, ?, ?, ?, ?)");
+        stmt.run(timestamp, name, company, score, result);
     }
-} catch (migErr) {
-    console.warn("[SQLite] Migration warning:", migErr.message);
 }
 
-// POST /api/score — record a new game score into SQLite database
-app.post("/api/score", (req, res) => {
+async function getTopLeaderboardFromDb() {
+    if (pgPool) {
+        const res = await pgPool.query(`
+            SELECT timestamp, name, company, score, result
+            FROM scores
+            ORDER BY score DESC, timestamp ASC
+            LIMIT 10
+        `);
+        return res.rows;
+    } else if (sqliteDb) {
+        return sqliteDb.prepare(`
+            SELECT timestamp, name, company, score, result
+            FROM scores
+            ORDER BY score DESC, timestamp ASC
+            LIMIT 10
+        `).all();
+    }
+    return [];
+}
+
+async function getAllScoresForCsvFromDb() {
+    if (pgPool) {
+        const res = await pgPool.query(`
+            SELECT timestamp, name, company, score, result
+            FROM scores
+            ORDER BY timestamp ASC
+        `);
+        return res.rows;
+    } else if (sqliteDb) {
+        return sqliteDb.prepare(`
+            SELECT timestamp, name, company, score, result
+            FROM scores
+            ORDER BY timestamp ASC
+        `).all();
+    }
+    return [];
+}
+
+// POST /api/score — record a new game score into database
+app.post("/api/score", async (req, res) => {
     try {
         const { name, company, score, result } = req.body;
         if (name == null || score == null) {
@@ -124,13 +149,10 @@ app.post("/api/score", (req, res) => {
         const finalScore = Number(score);
         const gameResult = result || "loss";
 
-        // Insert score into SQLite database
-        const stmt = db.prepare("INSERT INTO scores (timestamp, name, company, score, result) VALUES (?, ?, ?, ?, ?)");
-        stmt.run(timestamp, playerName, playerCompany, finalScore, gameResult);
+        await saveScoreToDb(timestamp, playerName, playerCompany, finalScore, gameResult);
+        console.log(`[DB] Score saved: ${playerName} (${playerCompany}) = ${finalScore}`);
 
-        console.log(`[SQLite] Score saved: ${playerName} (${playerCompany}) = ${finalScore}`);
-
-        // Also append to local CSV file backup
+        // Also append to local CSV file backup if possible
         try {
             const csvRow = [
                 csvEscape(timestamp),
@@ -140,42 +162,30 @@ app.post("/api/score", (req, res) => {
                 csvEscape(gameResult)
             ].join(",") + "\n";
             fs.appendFileSync(CSV_PATH, csvRow, "utf8");
-        } catch (csvErr) {
-            // Ignore CSV append errors
-        }
+        } catch (csvErr) {}
 
         res.json({ ok: true, timestamp });
     } catch (err) {
-        console.error("[SQLite] Error saving score:", err);
+        console.error("[DB] Error saving score:", err);
         res.status(500).json({ error: "Failed to save score" });
     }
 });
 
-// GET /api/leaderboard — return Top 10 highest scoring games from SQLite database
-app.get("/api/leaderboard", (req, res) => {
+// GET /api/leaderboard — return Top 10 highest scoring games from database
+app.get("/api/leaderboard", async (req, res) => {
     try {
-        const rows = db.prepare(`
-            SELECT timestamp, name, company, score, result
-            FROM scores
-            ORDER BY score DESC, timestamp ASC
-            LIMIT 10
-        `).all();
-
+        const rows = await getTopLeaderboardFromDb();
         res.json(rows);
     } catch (err) {
-        console.error("[SQLite] Error reading leaderboard:", err);
+        console.error("[DB] Error reading leaderboard:", err);
         res.json([]);
     }
 });
 
 // GET /api/download-csv — download ALL games played from database as CSV file
-app.get("/api/download-csv", (req, res) => {
+app.get("/api/download-csv", async (req, res) => {
     try {
-        const rows = db.prepare(`
-            SELECT timestamp, name, company, score, result
-            FROM scores
-            ORDER BY timestamp ASC
-        `).all();
+        const rows = await getAllScoresForCsvFromDb();
 
         let csv = "Timestamp,Player Name,Company,Score,Result\n";
         rows.forEach(row => {
@@ -192,7 +202,7 @@ app.get("/api/download-csv", (req, res) => {
         res.setHeader("Content-Disposition", 'attachment; filename="Ghost_Hunter_Leaderboard.csv"');
         return res.send(csv);
     } catch (err) {
-        console.error("[SQLite] Error exporting CSV:", err);
+        console.error("[DB] Error exporting CSV:", err);
         res.status(500).send("Failed to export CSV");
     }
 });
