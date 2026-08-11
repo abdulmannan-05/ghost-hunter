@@ -1819,8 +1819,6 @@
       scoreValueEl.textContent = score;
       ammo += AMMO_PER_KILL; // Ghost kill drops 2 bullets!
       shotsFiredSinceReload = Math.max(0, shotsFiredSinceReload - 1);
-      health = Math.min(MAX_HEALTH, health + 10);
-      renderHealthUI();
       renderAmmoUI();
       flashHit();
 
