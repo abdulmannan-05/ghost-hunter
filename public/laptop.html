@@ -63,22 +63,66 @@
   #game-wrap{display:none; width:100%; height:100%; position:relative}
   #hud{
     position:absolute; top:0; left:0; right:0; display:flex; justify-content:space-between;
-    align-items:flex-start; padding:14px 18px; z-index:10; pointer-events:none;
+    align-items:flex-start; padding:18px 22px; z-index:10; pointer-events:none;
   }
+  #hud-left{
+    display:flex; flex-direction:column; gap:10px; align-items:flex-start;
+  }
+  #hud-right{
+    display:flex; flex-direction:column; gap:10px; align-items:flex-end; margin-right:60px; /* Space for Gear Icon */
+  }
+
+  /* TOP LEFT: HEALTH BAR & SCORE */
+  #health-block{
+    width:250px; background:rgba(12,12,20,.85); border:1px solid rgba(42,42,61,.7);
+    border-radius:10px; padding:8px 12px; backdrop-filter:blur(12px); box-shadow:0 6px 20px rgba(0,0,0,.4);
+  }
+  #health-label{
+    font-size:9px; font-weight:700; letter-spacing:2px; text-transform:uppercase;
+    color:rgba(234,244,255,.55); margin-bottom:4px; display:flex; justify-content:space-between;
+  }
+  #health-num{color:#ff6b6b; font-weight:800; font-size:11px}
+  #health-track{
+    height:18px; border-radius:5px; background:rgba(8,8,14,.9); border:1px solid rgba(42,42,61,.8);
+    overflow:hidden; padding:2px; box-shadow:inset 0 2px 6px rgba(0,0,0,.6);
+  }
+  #health-fill{
+    height:100%; width:100%; border-radius:3px;
+    background:url("assets/images/blood_red_bar.png") center / cover no-repeat, linear-gradient(90deg,#ff2530,#ff6b6b);
+    transition:width 140ms linear, filter 200ms ease-out; box-shadow:0 0 10px rgba(255,37,48,.4);
+  }
+  #health-fill.mid{filter:brightness(1.1)}
+  #health-fill.low{filter:drop-shadow(0 0 8px #ff2530) brightness(1.3); animation:pulse 0.8s ease-in-out infinite}
+
   #score-box{
     background:rgba(12,12,20,.85); border:1px solid rgba(42,42,61,.7); border-radius:10px;
     padding:8px 14px; text-align:left; backdrop-filter:blur(12px); box-shadow:0 6px 20px rgba(0,0,0,.4);
-    min-width:135px;
+    min-width:145px;
   }
   #score-label{font-size:9px; font-weight:700; letter-spacing:2.5px; text-transform:uppercase; color:rgba(234,244,255,.45); margin-bottom:1px}
-  #score-value{font-size:38px; font-weight:800; color:var(--ghost); line-height:1; text-shadow:0 0 16px rgba(99,200,255,.6); margin:1px 0 4px}
+  #score-value{font-size:36px; font-weight:800; color:var(--ghost); line-height:1; text-shadow:0 0 16px rgba(99,200,255,.6); margin:1px 0 4px}
   #score-separator{border-bottom:1px dashed rgba(255,255,255,.12); margin:4px 0 6px; width:100%}
   #target-hint{font-size:11px; font-weight:600; color:rgba(255,179,71,.75); letter-spacing:.8px; display:flex; align-items:center; gap:4px}
   #target-hint .icon{color:var(--mango); font-size:13px}
+
+  /* TOP RIGHT: BULLETS & ROOM BADGE */
+  #ammo-block{
+    text-align:right; background:rgba(12,12,20,.85); border:1px solid rgba(42,42,61,.7);
+    border-radius:10px; padding:8px 14px; backdrop-filter:blur(12px); box-shadow:0 6px 20px rgba(0,0,0,.4);
+  }
+  #ammo-label{font-size:9px; font-weight:700; letter-spacing:2px; text-transform:uppercase; color:rgba(234,244,255,.55); margin-bottom:5px}
+  #ammo-bullets{display:flex; gap:6px; justify-content:flex-end; align-items:center}
+  .bullet{width:13px; height:32px; background:url("assets/images/bullet.png") center / contain no-repeat;
+    filter:grayscale(1) opacity(0.22); transition:filter 120ms ease-out, transform 120ms ease-out}
+  .bullet.filled{filter:drop-shadow(0 0 8px rgba(255,209,102,.7)) brightness(1.15) opacity(1); transform:scale(1.05)}
+  #reload-label{font-size:10px; font-weight:800; color:var(--red); letter-spacing:1.5px; margin-top:3px; text-transform:uppercase;
+    opacity:0; transition:opacity 150ms}
+  #reload-label.show{opacity:1}
+
   #room-badge{
     background:rgba(12,12,20,.85); border:1px solid rgba(42,42,61,.7); border-radius:10px;
-    padding:8px 14px; font-size:10px; font-weight:700; letter-spacing:2px; color:rgba(154,160,180,.6); text-transform:uppercase;
-    backdrop-filter:blur(12px); box-shadow:0 6px 20px rgba(0,0,0,.4);
+    padding:6px 12px; font-size:10px; font-weight:700; letter-spacing:2px; color:rgba(154,160,180,.6); text-transform:uppercase;
+    backdrop-filter:blur(12px); box-shadow:0 6px 20px rgba(0,0,0,.4); text-align:right;
   }
   #room-badge b{color:var(--ghost); letter-spacing:3px; font-weight:800}
 
@@ -92,35 +136,6 @@
     background:radial-gradient(ellipse at center,rgba(255,179,71,.3) 0%,transparent 60%);
     opacity:0; pointer-events:none; z-index:14; transition:opacity 300ms ease-out;
   }
-
-  /* health + ammo HUD */
-  #bottom-hud{
-    position:absolute; bottom:0; left:0; right:0; z-index:10; padding:16px 20px;
-    display:flex; justify-content:space-between; align-items:flex-end; pointer-events:none;
-  }
-  #health-block{width:290px}
-  #health-label{font-size:9px; font-weight:700; letter-spacing:2px; text-transform:uppercase; color:rgba(234,244,255,.45); margin-bottom:5px}
-  #health-track{
-    height:22px; border-radius:6px; background:rgba(12,12,20,.85); border:1px solid rgba(42,42,61,.8);
-    overflow:hidden; padding:2px; box-shadow:inset 0 2px 6px rgba(0,0,0,.6);
-  }
-  #health-fill{
-    height:100%; width:100%; border-radius:4px;
-    background:url("assets/images/blood_red_bar.png") center / cover no-repeat, linear-gradient(90deg,#ff2530,#ff6b6b);
-    transition:width 140ms linear, filter 200ms ease-out; box-shadow:0 0 10px rgba(255,37,48,.4);
-  }
-  #health-fill.mid{filter:brightness(1.1)}
-  #health-fill.low{filter:drop-shadow(0 0 8px #ff2530) brightness(1.3); animation:pulse 0.8s ease-in-out infinite}
-
-  #ammo-block{text-align:right}
-  #ammo-label{font-size:9px; font-weight:700; letter-spacing:2px; text-transform:uppercase; color:rgba(234,244,255,.45); margin-bottom:5px}
-  #ammo-bullets{display:flex; gap:6px; justify-content:flex-end; align-items:center}
-  .bullet{width:13px; height:32px; background:url("assets/images/bullet.png") center / contain no-repeat;
-    filter:grayscale(1) opacity(0.22); transition:filter 120ms ease-out, transform 120ms ease-out}
-  .bullet.filled{filter:drop-shadow(0 0 8px rgba(255,209,102,.7)) brightness(1.15) opacity(1); transform:scale(1.05)}
-  #reload-label{font-size:10px; font-weight:800; color:var(--red); letter-spacing:1.5px; margin-top:4px; text-transform:uppercase;
-    opacity:0; transition:opacity 150ms}
-  #reload-label.show{opacity:1}
 
   /* ================ GAME OVER ================ */
   #game-over{
@@ -166,8 +181,8 @@
 
   /* ================ GEAR ICON & SETTINGS MODAL ================ */
   #gear-btn {
-    position: fixed; top: 20px; right: 20px; z-index: 100;
-    width: 48px; height: 48px; border-radius: 50%;
+    position: fixed; top: 18px; right: 18px; z-index: 100;
+    width: 44px; height: 44px; border-radius: 50%;
     background: rgba(18, 18, 28, 0.75); border: 1px solid rgba(255, 255, 255, 0.18);
     color: #eaf4ff; font-size: 22px; cursor: pointer;
     display: flex; align-items: center; justify-content: center;
@@ -264,30 +279,34 @@
 <!-- ============ GAME ============ -->
 <div id="game-wrap">
   <div id="hud">
-    <div id="score-box">
-      <div id="score-label">CAPTURED</div>
-      <div id="score-value">0</div>
-      <div id="score-separator"></div>
-      <div id="target-hint"><span class="icon">🥭</span> TARGET 10</div>
+    <!-- TOP-LEFT: HEALTH BAR & SCORE BOX -->
+    <div id="hud-left">
+      <div id="health-block">
+        <div id="health-label">HEALTH <span id="health-num">100</span> / 100</div>
+        <div id="health-track"><div id="health-fill"></div></div>
+      </div>
+      <div id="score-box">
+        <div id="score-label">CAPTURED</div>
+        <div id="score-value">0</div>
+        <div id="score-separator"></div>
+        <div id="target-hint"><span class="icon">🥭</span> TARGET 10</div>
+      </div>
     </div>
-    <div id="room-badge">Room <b id="room-badge-code">----</b></div>
+
+    <!-- TOP-RIGHT: ROOM BADGE & BULLETS -->
+    <div id="hud-right">
+      <div id="room-badge">Room <b id="room-badge-code">----</b></div>
+      <div id="ammo-block">
+        <div id="ammo-label">AMMO</div>
+        <div id="ammo-bullets"></div>
+        <div id="reload-label">Reloading…</div>
+      </div>
+    </div>
   </div>
   <div id="hit-flash"></div>
   <div id="damage-flash"></div>
   <div id="mango-flash"></div>
   <canvas id="game-canvas"></canvas>
-
-  <div id="bottom-hud">
-    <div id="health-block">
-      <div id="health-label">Health</div>
-      <div id="health-track"><div id="health-fill"></div></div>
-    </div>
-    <div id="ammo-block">
-      <div id="ammo-label">Ammo</div>
-      <div id="ammo-bullets"></div>
-      <div id="reload-label">Reloading…</div>
-    </div>
-  </div>
 </div>
 
 <!-- ============ PAUSE OVERLAY ============ -->
@@ -797,15 +816,19 @@
 
   let lastHealthPushTime = 0;
   function renderHealthUI() {
-    const pct = Math.max(0, health / MAX_HEALTH) * 100;
+    const currentHp = Math.max(0, Math.round(health));
+    const pct = (currentHp / MAX_HEALTH) * 100;
     healthFillEl.style.width = pct + "%";
     healthFillEl.classList.toggle("low", pct <= 30);
     healthFillEl.classList.toggle("mid", pct > 30 && pct <= 60);
 
+    const healthNumEl = document.getElementById("health-num");
+    if (healthNumEl) healthNumEl.textContent = currentHp;
+
     const now = performance.now();
     if (now - lastHealthPushTime > 200 || health <= 0) {
       lastHealthPushTime = now;
-      sendToPhone({ type: "state", health: Math.round(health) });
+      sendToPhone({ type: "state", health: currentHp });
     }
   }
 
@@ -1001,8 +1024,6 @@
   }
 
   function updateGhosts(dt) {
-    let totalDamage = 0;
-
     for (let i = ghosts.length - 1; i >= 0; i--) {
       const g = ghosts[i];
       if (!g.alive) { ghosts.splice(i, 1); continue; }
@@ -1015,9 +1036,17 @@
         continue;
       }
 
-      totalDamage += DAMAGE_PER_SECOND * dt;
       g.timer += dt;
       g.bobPhase += dt * 2.5;
+
+      // Deplete 3 health points when ghost stays on screen for 3+ seconds (repeats every 3 seconds)
+      if (g.timer >= 3.0) {
+        if (g.lastDamageTime === undefined) g.lastDamageTime = 0;
+        if (g.timer - g.lastDamageTime >= 3.0) {
+          g.lastDamageTime = g.timer;
+          takeDamage(3);
+        }
+      }
 
       if (g.phase === "entering") {
         if (g.entrance === "edge") {
@@ -1047,8 +1076,6 @@
         g.y = Math.max(pad + 60, Math.min(canvas.height - pad, g.y));
       }
     }
-
-    if (totalDamage > 0) takeDamage(totalDamage);
   }
 
   // ===================================================================
@@ -1214,7 +1241,11 @@
       p.y += p.vy;
       p.vy += 0.12; // gentle gravity
       p.life -= p.decay;
-      if (p.life <= 0) { hitParticles.splice(i, 1); continue; }
+
+      if (p.life <= 0) {
+        hitParticles.splice(i, 1);
+        continue;
+      }
 
       ctx.globalAlpha = Math.max(0, p.life);
       ctx.fillStyle = `hsla(${p.hue}, 90%, 70%, ${p.life})`;
@@ -1269,8 +1300,14 @@
       const renderW = g.radius * 2.4;
       const renderH = renderW * dim.ratio;
 
-      ctx.shadowColor = g.hitTimer > 0 ? "rgba(255,255,255,1.0)" : (g.type === "boss" ? "rgba(255,209,102,0.9)" : (g.type === "fast" ? "rgba(255,37,48,0.9)" : "rgba(99,200,255,0.85)"));
-      ctx.shadowBlur = g.hitTimer > 0 ? 55 : 35;
+      // Add intense red danger aura glow when ghost remains >= 3.0 seconds on screen
+      if (g.timer >= 3.0 && !g.dying) {
+        ctx.shadowColor = "rgba(255, 25, 25, 1.0)";
+        ctx.shadowBlur = 45 + Math.sin(performance.now() / 100) * 15;
+      } else {
+        ctx.shadowColor = g.hitTimer > 0 ? "rgba(255,255,255,1.0)" : (g.type === "boss" ? "rgba(255,209,102,0.9)" : (g.type === "fast" ? "rgba(255,37,48,0.9)" : "rgba(99,200,255,0.85)"));
+        ctx.shadowBlur = g.hitTimer > 0 ? 55 : 35;
+      }
 
       ctx.drawImage(ghostSprite, -renderW / 2, -renderH / 2, renderW, renderH);
 
@@ -1280,8 +1317,19 @@
         ctx.globalAlpha = Math.max(0, g.hitTimer * 2.5);
         ctx.drawImage(ghostSprite, -renderW / 2, -renderH / 2, renderW, renderH);
       }
+
+      // Pulsing red danger ring around ghosts staying >= 3 seconds
+      if (g.timer >= 3.0 && !g.dying) {
+        ctx.save();
+        ctx.strokeStyle = `rgba(255, 30, 30, ${0.75 + Math.sin(performance.now() / 100) * 0.25})`;
+        ctx.lineWidth = 3.5;
+        ctx.beginPath();
+        ctx.arc(0, 0, renderW * 0.58, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+      }
     } else {
-      ctx.shadowColor = "rgba(99,200,255,0.9)";
+      ctx.shadowColor = g.timer >= 3.0 ? "rgba(255,30,30,1.0)" : "rgba(99,200,255,0.9)";
       ctx.shadowBlur = 45;
       ctx.font = `${g.radius * 2.1}px serif`;
       ctx.textAlign = "center";
