@@ -674,7 +674,7 @@
   roomAssets.furyGhost.src = "assets/sprites/Fury.png";
 
   // ===================================================================
-  // CONNECTION + PAIRING
+  // CONNECTION + PAIRING (WebSocket with HTTP Polling Fallback)
   // ===================================================================
   const statusDot = document.getElementById("status-dot");
   const statusText = document.getElementById("status-text");
@@ -688,21 +688,9 @@
   const readyPlayerNameEl = document.getElementById("ready-player-name");
   const gameWrapEl = document.getElementById("game-wrap");
 
-  function setStatus(state, text) {
-    statusDot.className = state;
-    statusText.textContent = text;
-  }
-
-  const wsProtocol = location.protocol === "https:" ? "wss" : "ws";
-  const ws = new WebSocket(`${wsProtocol}://${location.host}`);
-
-  ws.addEventListener("open", () => {
-    setStatus("pending", "Connected to server — creating room…");
-    ws.send(JSON.stringify({ type: "register-laptop" }));
-  });
-
-  ws.addEventListener("close", () => setStatus("", "Disconnected from server. Refresh to retry."));
-
+  let activeRoomCode = null;
+  let useHttpFallback = false;
+  let httpPollTimer = null;
   let gameStarted = false;
   let playerName = "Hunter";
   let companyName = "";
@@ -711,10 +699,14 @@
     return companyName ? `${playerName} (${companyName})` : playerName;
   }
 
-  ws.addEventListener("message", (event) => {
-    const msg = JSON.parse(event.data);
+  function setStatus(state, text) {
+    statusDot.className = state;
+    statusText.textContent = text;
+  }
 
+  function handleServerMessage(msg) {
     if (msg.type === "room-created") {
+      activeRoomCode = msg.room;
       roomCodeEl.textContent = msg.room;
       roomBadgeCode.textContent = msg.room;
 
@@ -757,14 +749,14 @@
     }
 
     if (msg.type === "aim") {
-      if (controlMode === "mouse") return; // ignore phone aim in mouse mode
+      if (controlMode === "mouse") return;
       targetAimX = msg.x;
       targetAimY = msg.y;
       return;
     }
 
     if (msg.type === "control-mode") {
-      controlMode = msg.mode; // "mouse" or "phone"
+      controlMode = msg.mode;
       if (controlMode === "mouse") {
         canvas.style.pointerEvents = "auto";
         canvas.style.cursor = "none";
@@ -797,10 +789,69 @@
       restartGame();
       return;
     }
-  });
+  }
+
+  function startHttpFallback() {
+    if (useHttpFallback) return;
+    useHttpFallback = true;
+    setStatus("pending", "Connecting via HTTP relay…");
+
+    fetch("/api/room/create", { method: "POST" })
+      .then(r => r.json())
+      .then(data => {
+        if (data.ok) {
+          handleServerMessage({ type: "room-created", room: data.room, ip: data.ip });
+          if (httpPollTimer) clearInterval(httpPollTimer);
+          httpPollTimer = setInterval(() => {
+            if (!activeRoomCode) return;
+            fetch(`/api/room/poll?room=${activeRoomCode}&role=laptop`)
+              .then(r => r.json())
+              .then(p => {
+                if (p.ok && p.msgs && p.msgs.length > 0) {
+                  p.msgs.forEach(handleServerMessage);
+                }
+              })
+              .catch(() => {});
+          }, 40);
+        }
+      })
+      .catch(() => {
+        setStatus("", "Disconnected from server. Refresh to retry.");
+      });
+  }
 
   function sendToPhone(msg) {
-    if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(msg));
+    if (!useHttpFallback && ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify(msg));
+    } else if (activeRoomCode) {
+      fetch("/api/room/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ room: activeRoomCode, role: "laptop", msg })
+      }).catch(() => {});
+    }
+  }
+
+  const wsProtocol = location.protocol === "https:" ? "wss" : "ws";
+  let ws = null;
+
+  try {
+    ws = new WebSocket(`${wsProtocol}://${location.host}`);
+    ws.addEventListener("open", () => {
+      setStatus("pending", "Connected to server — creating room…");
+      ws.send(JSON.stringify({ type: "register-laptop" }));
+    });
+    ws.addEventListener("message", (e) => {
+      try { handleServerMessage(JSON.parse(e.data)); } catch (err) {}
+    });
+    ws.addEventListener("close", () => {
+      startHttpFallback();
+    });
+    ws.addEventListener("error", () => {
+      startHttpFallback();
+    });
+  } catch (err) {
+    startHttpFallback();
   }
 
   function startSequence() {

@@ -309,27 +309,13 @@
   }
 
   // ===================================================================
-  // WEBSOCKET CONNECTION
+  // CONNECTION + PAIRING (WebSocket with HTTP Polling Fallback)
   // ===================================================================
-  const params = new URLSearchParams(location.search);
-  const room = (params.get("room") || "").toUpperCase();
+  let useHttpFallback = false;
+  let httpPollTimer = null;
+  let activeRoomCode = (new URLSearchParams(location.search).get("room") || "").toUpperCase();
 
-  if (!room) {
-    setStatus("", "No room code in link. Scan the QR again.");
-  }
-
-  const wsProtocol = location.protocol === "https:" ? "wss" : "ws";
-  const ws = new WebSocket(`${wsProtocol}://${location.host}`);
-
-  ws.addEventListener("open", () => {
-    setStatus("pending", "Joining room " + room + "…");
-    ws.send(JSON.stringify({ type: "register-phone", room }));
-  });
-
-  ws.addEventListener("close", () => setStatus("", "Disconnected. Refresh to retry."));
-
-  ws.addEventListener("message", (event) => {
-    const msg = JSON.parse(event.data);
+  function handleServerMessage(msg) {
     if (msg.type === "join-failed") {
       setStatus("", msg.reason || "Could not join room.");
     }
@@ -367,10 +353,83 @@
         miniScoreEl.textContent = msg.score;
       }
     }
-  });
+  }
 
   function send(msg) {
-    if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(msg));
+    if (!useHttpFallback && ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify(msg));
+    } else if (activeRoomCode) {
+      fetch("/api/room/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ room: activeRoomCode, role: "phone", msg })
+      }).catch(() => {});
+    }
+  }
+
+  function startHttpFallback() {
+    if (useHttpFallback) return;
+    useHttpFallback = true;
+    if (!activeRoomCode) {
+      setStatus("", "No room code in link. Scan the QR again.");
+      return;
+    }
+    setStatus("pending", "Joining room " + activeRoomCode + " via HTTP…");
+
+    fetch("/api/room/join", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ room: activeRoomCode })
+    })
+      .then(r => r.json())
+      .then(data => {
+        if (data.ok) {
+          handleServerMessage({ type: "joined", room: activeRoomCode });
+          handleServerMessage({ type: "paired" });
+          if (httpPollTimer) clearInterval(httpPollTimer);
+          httpPollTimer = setInterval(() => {
+            fetch(`/api/room/poll?room=${activeRoomCode}&role=phone`)
+              .then(r => r.json())
+              .then(p => {
+                if (p.ok && p.msgs && p.msgs.length > 0) {
+                  p.msgs.forEach(handleServerMessage);
+                }
+              })
+              .catch(() => {});
+          }, 80);
+        } else {
+          setStatus("", data.reason || "Could not join room.");
+        }
+      })
+      .catch(() => {
+        setStatus("", "Disconnected. Refresh to retry.");
+      });
+  }
+
+  const wsProtocol = location.protocol === "https:" ? "wss" : "ws";
+  let ws = null;
+
+  if (activeRoomCode) {
+    try {
+      ws = new WebSocket(`${wsProtocol}://${location.host}`);
+      ws.addEventListener("open", () => {
+        setStatus("pending", "Joining room " + activeRoomCode + "…");
+        ws.send(JSON.stringify({ type: "register-phone", room: activeRoomCode }));
+      });
+      ws.addEventListener("message", (e) => {
+        try { handleServerMessage(JSON.parse(e.data)); } catch (err) {}
+      });
+      ws.addEventListener("close", () => {
+        startHttpFallback();
+      });
+      ws.addEventListener("error", () => {
+        startHttpFallback();
+      });
+    } catch (err) {
+      startHttpFallback();
+    }
+  } else {
+    setStatus("", "No room code in link. Scan the QR again.");
   }
 
   // ===================================================================

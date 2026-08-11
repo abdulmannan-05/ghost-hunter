@@ -197,6 +197,86 @@ app.get("/api/download-csv", (req, res) => {
     }
 });
 
+// ===================================================================
+// HTTP POLLING RELAY FOR VERCEL & SERVERLESS ENVIRONMENTS
+// ===================================================================
+const httpRooms = new Map();
+
+// Clean up stale HTTP rooms older than 15 minutes
+setInterval(() => {
+    const now = Date.now();
+    for (const [code, room] of httpRooms.entries()) {
+        if (now - room.lastSeen > 15 * 60 * 1000) {
+            httpRooms.delete(code);
+        }
+    }
+}, 60000);
+
+// POST /api/room/create — Create HTTP pairing room for laptop
+app.post("/api/room/create", (req, res) => {
+    const code = makeRoomCode();
+    const ips = getLocalIPs();
+    httpRooms.set(code, {
+        laptopMsgs: [],
+        phoneMsgs: [],
+        phoneJoined: false,
+        lastSeen: Date.now()
+    });
+    res.json({ ok: true, room: code, ip: ips[0] || null, ips });
+});
+
+// POST /api/room/join — Phone joins HTTP pairing room
+app.post("/api/room/join", (req, res) => {
+    const code = (req.body.room || "").toUpperCase();
+    const room = httpRooms.get(code);
+    if (!room) {
+        return res.status(404).json({ ok: false, reason: "Room not found. Ask the laptop for a fresh QR code." });
+    }
+    room.phoneJoined = true;
+    room.lastSeen = Date.now();
+    room.laptopMsgs.push({ type: "paired" });
+    room.phoneMsgs.push({ type: "joined", room: code });
+    room.phoneMsgs.push({ type: "paired" });
+    res.json({ ok: true, room: code });
+});
+
+// POST /api/room/send — Send game message via HTTP
+app.post("/api/room/send", (req, res) => {
+    const { room: code, role, msg } = req.body;
+    const room = httpRooms.get(code);
+    if (!room) return res.status(404).json({ ok: false, reason: "Room expired" });
+
+    room.lastSeen = Date.now();
+    if (role === "phone") {
+        room.laptopMsgs.push(msg);
+        if (room.laptopMsgs.length > 80) room.laptopMsgs.shift();
+    } else if (role === "laptop") {
+        room.phoneMsgs.push(msg);
+        if (room.phoneMsgs.length > 80) room.phoneMsgs.shift();
+    }
+    res.json({ ok: true });
+});
+
+// GET /api/room/poll — Poll pending messages for role
+app.get("/api/room/poll", (req, res) => {
+    const code = (req.query.room || "").toUpperCase();
+    const role = req.query.role;
+    const room = httpRooms.get(code);
+    if (!room) return res.status(404).json({ ok: false, reason: "Room expired" });
+
+    room.lastSeen = Date.now();
+    let msgs = [];
+    if (role === "laptop") {
+        msgs = room.laptopMsgs;
+        room.laptopMsgs = [];
+    } else if (role === "phone") {
+        msgs = room.phoneMsgs;
+        room.phoneMsgs = [];
+    }
+
+    res.json({ ok: true, msgs });
+});
+
 // Redirect root route to laptop.html
 app.get("/", (req, res) => {
     res.redirect("/laptop.html");
