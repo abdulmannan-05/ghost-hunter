@@ -12,12 +12,18 @@
     --gold:#ffd166; --mango:#ffb347;
   }
   *{box-sizing:border-box; -webkit-tap-highlight-color:transparent; user-select:none}
-  html,body{height:100%}
+  html,body{height:100%; overflow:hidden}
   body{
     margin:0; background:var(--bg); color:#eaf4ff;
     font-family:'Outfit','Helvetica Neue',Arial,sans-serif;
     display:flex; flex-direction:column; align-items:center; justify-content:center;
-    padding:20px; text-align:center; touch-action:none;
+    padding:0; text-align:center; touch-action:none;
+  }
+
+  /* ---------- PORTRAIT SCREENS: NAME ENTRY + GAME OVER ---------- */
+  .portrait-view{
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    padding:20px; width:100%; height:100%;
   }
   h1{font-size:22px; font-weight:800; margin:0 0 4px;
     background:linear-gradient(135deg,#63c8ff,#a78bfa); -webkit-background-clip:text; -webkit-text-fill-color:transparent}
@@ -44,17 +50,7 @@
   button.secondary{background:#1c1c2a; color:#eaf4ff; box-shadow:0 6px 0 #05050a}
   button.secondary:active{box-shadow:0 2px 0 #05050a}
   button:disabled{opacity:.4}
-
-  #fire-btn{
-    width:170px; height:170px; border-radius:50%; background:var(--red);
-    box-shadow:0 8px 0 #a3131c; font-size:22px; margin-top:12px;
-  }
-  #fire-btn:active{transform:translateY(6px); box-shadow:0 2px 0 #a3131c}
-
-  #tilt-readout{
-    font-family:monospace; font-size:12px; color:var(--ink); margin-bottom:10px;
-  }
-  .hidden{display:none}
+  .hidden{display:none !important}
 
   /* NAME & COMPANY INPUTS */
   #name-input, #company-input {
@@ -75,79 +71,187 @@
     animation:mangoPulse 1s ease-in-out infinite;
   }
   @keyframes mangoPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
+
+  /* ---------- LANDSCAPE GAME VIEW ---------- */
+  #step-play{
+    display:none;
+    width:100vw; height:100vh; /* full screen */
+    flex-direction:row; /* landscape layout */
+    align-items:stretch;
+    padding:0; margin:0;
+    position:fixed; inset:0;
+    background:var(--bg);
+    z-index:100;
+  }
+  #step-play.active{display:flex !important}
+
+  /* LEFT COLUMN: Touchpad */
+  #touchpad-column{
+    flex:1;
+    display:flex; flex-direction:column;
+    position:relative;
+  }
+
+  /* Mini HUD bar at top of touchpad */
+  #mini-hud{
+    display:flex; gap:14px; justify-content:center; align-items:center;
+    font-size:12px; color:var(--ink); letter-spacing:1px;
+    background:rgba(18,18,28,0.9); border-bottom:1px solid var(--line);
+    padding:6px 12px; flex-shrink:0;
+  }
+
+  /* Touchpad area */
+  #touchpad{
+    flex:1;
+    position:relative;
+    background:radial-gradient(ellipse at center, rgba(99,200,255,0.04) 0%, transparent 70%);
+    border-right:1px solid var(--line);
+    cursor:crosshair;
+    overflow:hidden;
+  }
+  #touchpad::after{
+    content:'';
+    position:absolute; top:50%; left:50%;
+    width:2px; height:2px;
+    background:rgba(99,200,255,0.3);
+    border-radius:50%;
+    box-shadow:0 0 40px 20px rgba(99,200,255,0.06);
+    transform:translate(-50%,-50%);
+  }
+  #touchpad-label{
+    position:absolute; bottom:8px; left:50%;
+    transform:translateX(-50%);
+    font-size:10px; color:rgba(154,160,180,0.4);
+    letter-spacing:2px; text-transform:uppercase;
+    pointer-events:none;
+  }
+  /* Touch indicator dot */
+  #touch-dot{
+    position:absolute;
+    width:28px; height:28px;
+    border-radius:50%;
+    border:2px solid var(--ghost);
+    background:rgba(99,200,255,0.15);
+    box-shadow:0 0 20px rgba(99,200,255,0.3);
+    transform:translate(-50%,-50%);
+    pointer-events:none;
+    display:none;
+    transition:opacity 0.15s;
+  }
+
+  /* Crosshair indicator in touchpad */
+  #touchpad-crosshair{
+    position:absolute;
+    width:10px; height:10px;
+    border:2px solid rgba(99,200,255,0.6);
+    border-radius:50%;
+    transform:translate(-50%,-50%);
+    pointer-events:none;
+    top:50%; left:50%;
+    box-shadow:0 0 8px rgba(99,200,255,0.3);
+  }
+  #touchpad-crosshair::before,
+  #touchpad-crosshair::after{
+    content:'';
+    position:absolute;
+    background:rgba(99,200,255,0.4);
+  }
+  #touchpad-crosshair::before{
+    width:14px; height:1px;
+    top:50%; left:50%;
+    transform:translate(-50%,-50%);
+  }
+  #touchpad-crosshair::after{
+    width:1px; height:14px;
+    top:50%; left:50%;
+    transform:translate(-50%,-50%);
+  }
+
+  /* RIGHT COLUMN: Fire + controls */
+  #controls-column{
+    width:140px; flex-shrink:0;
+    display:flex; flex-direction:column;
+    align-items:center; justify-content:center;
+    gap:10px;
+    padding:10px 8px;
+    background:rgba(18,18,28,0.6);
+    border-left:1px solid var(--line);
+  }
+
+  #fire-btn{
+    width:100px; height:100px; border-radius:50%; background:var(--red);
+    box-shadow:0 6px 0 #a3131c; font-size:18px; margin:0; padding:0;
+    flex-shrink:0;
+  }
+  #fire-btn:active{transform:translateY(4px); box-shadow:0 2px 0 #a3131c}
+
+  .ctrl-btn{
+    width:100%; padding:8px 4px; font-size:11px; font-weight:700;
+    border-radius:8px; margin:0; max-width:none;
+    box-shadow:0 3px 0 #05050a;
+  }
+
+  /* Sensitivity row */
+  #sens-row{
+    width:100%; padding:4px 6px;
+    background:var(--panel); border:1px solid var(--line); border-radius:8px;
+  }
+  #sens-row label{font-size:10px; color:var(--ink); display:block; margin-bottom:2px}
+  #sens-slider{width:100%; margin:0}
+  #sens-val{font-size:10px; color:var(--ghost); font-weight:bold}
+
+  /* Aim readout */
+  #tilt-readout{
+    font-family:monospace; font-size:10px; color:var(--ink);
+    text-align:center; width:100%;
+  }
 </style>
 </head>
 <body>
   <h1>👻 GHOST HUNTER</h1>
   <div class="sub">Event Controller</div>
 
-  <div id="http-warning" class="hidden" style="background:#3b1418; border:1px solid var(--red); color:#ffbcbc; padding:12px; border-radius:10px; font-size:13px; margin-bottom:16px; max-width:320px; text-align:left;">
-    <strong>⚠️ Sensors Blocked (HTTP)</strong><br>
-    Mobile browsers block motion sensors on HTTP.<br><br>
-    <button id="switch-https-btn" style="background:var(--red); color:#fff; padding:10px; font-size:14px; margin:4px 0 0; box-shadow:none;">Switch to HTTPS 🔒</button>
-  </div>
-
   <div id="status-line"><span id="status-dot"></span><span id="status-text">Connecting…</span></div>
 
-  <!-- STEP: NAME ENTRY -->
-  <div id="step-name">
+  <!-- STEP: NAME ENTRY (portrait) -->
+  <div id="step-name" class="portrait-view">
     <p style="color:var(--ink); font-size:13px; max-width:300px; margin-bottom:14px;">Enter your details to join the hunt:</p>
     <input type="text" id="name-input" placeholder="Person Name" autocomplete="off" spellcheck="false">
     <input type="text" id="company-input" placeholder="Company Name" autocomplete="off" spellcheck="false">
     <button id="name-btn">START HUNTING 🎯</button>
   </div>
 
-  <!-- STEP: PERMISSION -->
-  <div id="step-permission" class="hidden">
-    <button id="start-btn">Enable Motion Sensors</button>
-  </div>
-
-  <!-- STEP: CALIBRATE -->
-  <div id="step-calibrate" class="hidden">
-    <p style="color:var(--ink); font-size:13px; max-width:280px;">Point your phone's camera side at the laptop screen, then tap calibrate.</p>
-    <div id="sensor-indicator" style="font-size:12px; color:#f5c542; margin-bottom:14px; font-family:monospace;">Waiting for sensor data…</div>
-    <button id="calibrate-btn" class="secondary">🎯 Calibrate center</button>
-  </div>
-
-  <!-- STEP: PLAY -->
-  <div id="step-play" class="hidden">
-    <div id="mango-badge">🥭 MANGO TARGET REACHED!</div>
-
-    <div id="mini-hud" style="display:flex; gap:20px; justify-content:center; margin-bottom:12px; font-size:14px; color:var(--ink); letter-spacing:1px; background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:8px 16px; width:100%; max-width:320px;">
-      <span>❤️ <b id="mini-health" style="color:#4ade80">100</b></span>
-      <span>🔫 <b id="mini-ammo" style="color:var(--ghost)">5</b></span>
-      <span>👻 <b id="mini-score" style="color:var(--gold)">0</b></span>
-    </div>
-
-    <div id="tilt-readout">aim: X=0.00, Y=0.00</div>
-
-    <div style="background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:12px 16px; margin-bottom:14px; width:100%; max-width:320px; text-align:left;">
-      <div style="display:flex; justify-content:space-between; font-size:12px; color:var(--ink); margin-bottom:6px;">
-        <span>Sensitivity:</span>
-        <span id="sens-val" style="color:var(--ghost); font-weight:bold;">1.5x</span>
+  <!-- STEP: PLAY (landscape touchpad controller) -->
+  <div id="step-play">
+    <!-- Left: Touchpad -->
+    <div id="touchpad-column">
+      <div id="mini-hud">
+        <div id="mango-badge">🥭 TARGET REACHED!</div>
+        <span>❤️ <b id="mini-health" style="color:#4ade80">100</b></span>
+        <span>🔫 <b id="mini-ammo" style="color:var(--ghost)">5</b></span>
+        <span>👻 <b id="mini-score" style="color:var(--gold)">0</b></span>
       </div>
-      <input type="range" id="sens-slider" min="0.5" max="6.0" step="0.1" value="1.5" style="width:100%; cursor:pointer; margin-bottom:10px;">
-
-      <div style="display:flex; justify-content:space-between; font-size:12px; color:#eaf4ff;">
-        <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
-          <input type="checkbox" id="invert-x-check"> Flip Left/Right
-        </label>
-        <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
-          <input type="checkbox" id="invert-y-check"> Flip Up/Down
-        </label>
+      <div id="touchpad">
+        <div id="touch-dot"></div>
+        <div id="touchpad-crosshair"></div>
+        <div id="touchpad-label">Drag to aim</div>
       </div>
     </div>
 
-    <button id="fire-btn">FIRE</button>
-    <div style="display:flex; gap:10px; justify-content:center; margin-top:14px; width:100%; max-width:320px;">
-      <button id="pause-btn" class="secondary" style="flex:1; margin-bottom:0; background:#242438;">⏸️ Pause</button>
-      <button id="recalibrate-btn" class="secondary" style="flex:1; margin-bottom:0;">🎯 Calibrate</button>
+    <!-- Right: Fire + Controls -->
+    <div id="controls-column">
+      <button id="fire-btn">FIRE</button>
+      <button id="pause-btn" class="ctrl-btn secondary">⏸️ Pause</button>
+      <div id="sens-row">
+        <label>Sensitivity <span id="sens-val">1.5x</span></label>
+        <input type="range" id="sens-slider" min="0.5" max="4.0" step="0.1" value="1.5">
+      </div>
+      <div id="tilt-readout">aim: 0.00, 0.00</div>
     </div>
-    <button id="mouse-toggle-btn" class="secondary" style="margin-top:10px; width:100%; max-width:320px; background:#1a1a2e; border:1px solid #3a3a5c; font-size:14px; padding:12px 16px;">🖱️ Shift to Mouse</button>
   </div>
 
-  <!-- STEP: GAME OVER -->
-  <div id="step-gameover" class="hidden">
+  <!-- STEP: GAME OVER (portrait) -->
+  <div id="step-gameover" class="portrait-view hidden">
     <div id="gameover-title" style="font-size:20px; font-weight:800; color:var(--red); letter-spacing:2px; margin-bottom:6px;">YOU DIDN'T SURVIVE</div>
     <div style="font-size:13px; color:var(--ink); margin-bottom:6px;">Final Score</div>
     <div id="final-score" style="font-size:54px; font-weight:800; color:var(--ghost); margin-bottom:24px;">0</div>
@@ -155,49 +259,38 @@
   </div>
 
 <script>
+  // ===================================================================
+  // DOM REFS
+  // ===================================================================
   const statusDot = document.getElementById("status-dot");
   const statusText = document.getElementById("status-text");
-  const httpWarning = document.getElementById("http-warning");
-  const switchHttpsBtn = document.getElementById("switch-https-btn");
   const stepName = document.getElementById("step-name");
   const nameInput = document.getElementById("name-input");
   const companyInput = document.getElementById("company-input");
   const nameBtn = document.getElementById("name-btn");
-  const stepPermission = document.getElementById("step-permission");
-  const stepCalibrate = document.getElementById("step-calibrate");
   const stepPlay = document.getElementById("step-play");
   const stepGameover = document.getElementById("step-gameover");
-  const startBtn = document.getElementById("start-btn");
-  const calibrateBtn = document.getElementById("calibrate-btn");
-  const recalibrateBtn = document.getElementById("recalibrate-btn");
   const fireBtn = document.getElementById("fire-btn");
   const playAgainBtn = document.getElementById("play-again-btn");
   const tiltReadout = document.getElementById("tilt-readout");
-  const sensorIndicator = document.getElementById("sensor-indicator");
   const sensSlider = document.getElementById("sens-slider");
   const sensVal = document.getElementById("sens-val");
-  const invertXCheck = document.getElementById("invert-x-check");
-  const invertYCheck = document.getElementById("invert-y-check");
   const finalScoreEl = document.getElementById("final-score");
   const miniHealthEl = document.getElementById("mini-health");
   const miniAmmoEl = document.getElementById("mini-ammo");
   const miniScoreEl = document.getElementById("mini-score");
   const mangoBadge = document.getElementById("mango-badge");
   const gameoverTitle = document.getElementById("gameover-title");
+  const touchpad = document.getElementById("touchpad");
+  const touchDot = document.getElementById("touch-dot");
+  const touchpadCrosshair = document.getElementById("touchpad-crosshair");
 
   // Phone audio & haptics
   const shootSound = new Audio("assets/audio/shoot.wav");
   shootSound.preload = "auto";
   shootSound.volume = 0.6;
 
-  if (location.protocol !== "https:" && location.hostname !== "localhost" && location.hostname !== "127.0.0.1") {
-    httpWarning.classList.remove("hidden");
-    switchHttpsBtn.addEventListener("click", () => { location.protocol = "https:"; });
-  }
-
   let userSensitivity = 1.5;
-  let invertX = false;
-  let invertY = false;
   let playerName = "Hunter";
   let companyName = "";
 
@@ -205,14 +298,15 @@
     userSensitivity = parseFloat(e.target.value);
     sensVal.textContent = userSensitivity.toFixed(1) + "x";
   });
-  invertXCheck.addEventListener("change", (e) => invertX = e.target.checked);
-  invertYCheck.addEventListener("change", (e) => invertY = e.target.checked);
 
   function setStatus(state, text) {
     statusDot.className = state;
     statusText.textContent = text;
   }
 
+  // ===================================================================
+  // WEBSOCKET CONNECTION
+  // ===================================================================
   const params = new URLSearchParams(location.search);
   const room = (params.get("room") || "").toUpperCase();
 
@@ -248,7 +342,7 @@
       finalScoreEl.textContent = msg.score;
       gameoverTitle.textContent = msg.win ? "🥭 TARGET REACHED!" : "YOU DIDN'T SURVIVE";
       gameoverTitle.style.color = msg.win ? "var(--mango)" : "var(--red)";
-      stepPlay.classList.add("hidden");
+      stepPlay.classList.remove("active");
       stepGameover.classList.remove("hidden");
       if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
     }
@@ -275,7 +369,9 @@
     if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(msg));
   }
 
-  // --- STEP: NAME & COMPANY ENTRY ---
+  // ===================================================================
+  // STEP: NAME & COMPANY ENTRY
+  // ===================================================================
   const nameErrorEl = document.createElement("div");
   nameErrorEl.style.cssText = "color:var(--red); font-size:12px; margin-bottom:10px; display:none;";
   stepName.insertBefore(nameErrorEl, nameInput);
@@ -297,13 +393,15 @@
     nameInput.style.borderColor = "var(--line)";
     companyInput.style.borderColor = "var(--line)";
 
-    // No character or word limits!
     playerName = valName;
     companyName = valCompany;
 
-    stepName.classList.add("hidden");
-    stepPermission.classList.remove("hidden");
     send({ type: "set-name", name: playerName, company: companyName });
+
+    // Skip permission & calibration — go straight to play
+    stepName.classList.add("hidden");
+    stepPlay.classList.add("active");
+    send({ type: "start-game" });
   });
 
   const clearErr = () => {
@@ -323,171 +421,97 @@
     if (e.key === "Enter") nameBtn.click();
   });
 
-  // --- STEP: PERMISSION ---
-  startBtn.addEventListener("click", async () => {
-    try {
-      if (typeof DeviceOrientationEvent !== "undefined" &&
-          typeof DeviceOrientationEvent.requestPermission === "function") {
-        const result = await DeviceOrientationEvent.requestPermission();
-        if (result !== "granted") {
-          alert("Motion access denied — reload page and allow motion sensors.");
-          return;
-        }
-      }
-      if (typeof DeviceMotionEvent !== "undefined" &&
-          typeof DeviceMotionEvent.requestPermission === "function") {
-        await DeviceMotionEvent.requestPermission();
-      }
-      send({ type: "hello", text: "phone ready" });
-      stepPermission.classList.add("hidden");
-      stepCalibrate.classList.remove("hidden");
-      attachSensorListeners();
-    } catch (err) {
-      alert("Couldn't access motion sensors: " + err.message);
-    }
-  });
+  // ===================================================================
+  // TOUCHPAD AIM CONTROL
+  // ===================================================================
+  // The touchpad tracks finger position and maps it to normalized
+  // aim coordinates (-1 to 1) which are sent to the laptop.
+  // Dragging from center to edge = full range.
 
-  // --- SENSORS ---
-  let center = { alpha: 0, beta: 0, gamma: 0 };
-  let haveOrientation = false;
-  let latest = { alpha: 0, beta: 0, gamma: 0 };
-
-  function updateSensorData(a, b, g) {
-    if (b === null || g === null || isNaN(b) || isNaN(g)) return;
-    latest = { alpha: a || 0, beta: b, gamma: g };
-    haveOrientation = true;
-    if (sensorIndicator) {
-      sensorIndicator.style.color = "var(--ok)";
-      sensorIndicator.textContent = `Sensors Active ✅ (β: ${b.toFixed(1)}°, γ: ${g.toFixed(1)}°)`;
-    }
-  }
-
-  function attachSensorListeners() {
-    window.addEventListener("deviceorientation", (e) => {
-      if (e.beta !== null && e.gamma !== null) updateSensorData(e.alpha, e.beta, e.gamma);
-    }, true);
-
-    window.addEventListener("deviceorientationabsolute", (e) => {
-      if (!haveOrientation && e.beta !== null && e.gamma !== null) updateSensorData(e.alpha, e.beta, e.gamma);
-    }, true);
-
-    window.addEventListener("devicemotion", (e) => {
-      if (!haveOrientation && e.accelerationIncludingGravity) {
-        const acc = e.accelerationIncludingGravity;
-        if (acc.x !== null && acc.y !== null && acc.z !== null) {
-          const roll = Math.atan2(acc.x, acc.z) * (180 / Math.PI);
-          const pitch = Math.atan2(acc.y, acc.z) * (180 / Math.PI);
-          updateSensorData(0, pitch, roll);
-        }
-      }
-    }, true);
-  }
-
-  attachSensorListeners();
-
-  // --- CALIBRATE ---
-  calibrateBtn.addEventListener("click", () => {
-    if (!haveOrientation) {
-      alert("No motion data yet — make sure you are using HTTPS and move your phone slightly.");
-      return;
-    }
-    center = { ...latest };
-    stepCalibrate.classList.add("hidden");
-    stepPlay.classList.remove("hidden");
-    mangoBadge.style.display = "none";
-    send({ type: "start-game" });
-  });
-
-  recalibrateBtn.addEventListener("click", () => {
-    stepPlay.classList.add("hidden");
-    stepCalibrate.classList.remove("hidden");
-  });
-
-  // --- GYRO LOOP ---
-  function diffAngle(a, b) {
-    let d = (a - b) % 360;
-    if (d < -180) d += 360;
-    if (d > 180) d -= 360;
-    return d;
-  }
-
-  let targetX = 0, targetY = 0;
-  let smoothX = 0, smoothY = 0;
-  const LERP_FACTOR = 0.20;
-  let useMouseMode = false; // when true, phone stops sending aim data
-
-  // --- MOUSE / PHONE TOGGLE ---
-  const mouseToggleBtn = document.getElementById("mouse-toggle-btn");
-  const sensControls = document.querySelector("#sens-slider")?.closest("div[style]");
-
-  mouseToggleBtn.addEventListener("click", () => {
-    useMouseMode = !useMouseMode;
-    if (useMouseMode) {
-      mouseToggleBtn.textContent = "📱 Hunt with Phone";
-      mouseToggleBtn.style.background = "var(--gold)";
-      mouseToggleBtn.style.color = "#0c0c14";
-      tiltReadout.textContent = "🖱️ Mouse controlling crosshair";
-      send({ type: "control-mode", mode: "mouse" });
-    } else {
-      mouseToggleBtn.textContent = "🖱️ Shift to Mouse";
-      mouseToggleBtn.style.background = "#1a1a2e";
-      mouseToggleBtn.style.color = "#eaf4ff";
-      send({ type: "control-mode", mode: "phone" });
-    }
-  });
-
-  function loop() {
-    if (haveOrientation && !stepPlay.classList.contains("hidden") && !useMouseMode) {
-      const pitchRad = (latest.beta * Math.PI) / 180;
-      const deltaGamma = diffAngle(latest.gamma, center.gamma);
-      const deltaAlpha = diffAngle(latest.alpha, center.alpha);
-      const deltaBeta = diffAngle(latest.beta, center.beta);
-
-      let rawAngleX = -(deltaGamma * Math.cos(pitchRad) + deltaAlpha * Math.sin(pitchRad));
-      let rawAngleY = deltaBeta;
-
-      if (invertX) rawAngleX = -rawAngleX;
-      if (invertY) rawAngleY = -rawAngleY;
-
-      let normX = rawAngleX / (35 / userSensitivity);
-      let normY = rawAngleY / (35 / userSensitivity);
-
-      const DEADZONE = 0.02;
-      if (Math.abs(normX) < DEADZONE) {
-        normX = 0;
-      } else {
-        normX = Math.sign(normX) * ((Math.abs(normX) - DEADZONE) / (1 - DEADZONE));
-      }
-      if (Math.abs(normY) < DEADZONE) {
-        normY = 0;
-      } else {
-        normY = Math.sign(normY) * ((Math.abs(normY) - DEADZONE) / (1 - DEADZONE));
-      }
-
-      targetX = Math.max(-1, Math.min(1, normX));
-      targetY = Math.max(-1, Math.min(1, normY));
-
-      // Fast single-pass responsive smoothing
-      smoothX += (targetX - smoothX) * 0.35;
-      smoothY += (targetY - smoothY) * 0.35;
-
-      const now = performance.now();
-      // Throttle network sends to ~35Hz (every 28ms) to prevent mobile TCP queueing lag
-      if (now - lastAimSendTime > 28) {
-        lastAimSendTime = now;
-        const sendX = Math.round(smoothX * 1000) / 1000;
-        const sendY = Math.round(smoothY * 1000) / 1000;
-        tiltReadout.textContent = `aim: X=${sendX.toFixed(2)}, Y=${sendY.toFixed(2)}`;
-        send({ type: "aim", x: sendX, y: sendY });
-      }
-    }
-    requestAnimationFrame(loop);
-  }
-
+  let aimX = 0, aimY = 0;
+  let isTouching = false;
   let lastAimSendTime = 0;
-  requestAnimationFrame(loop);
 
-  // --- PAUSE & RESUME ---
+  function getTouchAim(touch) {
+    const rect = touchpad.getBoundingClientRect();
+    // Map touch position to -1..1 relative to touchpad center
+    const relX = (touch.clientX - rect.left) / rect.width;
+    const relY = (touch.clientY - rect.top) / rect.height;
+    // Convert 0..1 to -1..1
+    let x = (relX * 2 - 1) * userSensitivity;
+    let y = (relY * 2 - 1) * userSensitivity;
+    // Clamp
+    x = Math.max(-1, Math.min(1, x));
+    y = Math.max(-1, Math.min(1, y));
+    return { x, y };
+  }
+
+  function updateTouchDot(touch) {
+    const rect = touchpad.getBoundingClientRect();
+    touchDot.style.left = (touch.clientX - rect.left) + "px";
+    touchDot.style.top = (touch.clientY - rect.top) + "px";
+    touchDot.style.display = "block";
+  }
+
+  function updateCrosshairIndicator() {
+    // Show where crosshair is aimed within the touchpad
+    const pctX = (aimX + 1) / 2 * 100;
+    const pctY = (aimY + 1) / 2 * 100;
+    touchpadCrosshair.style.left = pctX + "%";
+    touchpadCrosshair.style.top = pctY + "%";
+  }
+
+  function sendAim() {
+    const now = performance.now();
+    if (now - lastAimSendTime > 25) { // ~40Hz
+      lastAimSendTime = now;
+      const sx = Math.round(aimX * 1000) / 1000;
+      const sy = Math.round(aimY * 1000) / 1000;
+      tiltReadout.textContent = `aim: ${sx.toFixed(2)}, ${sy.toFixed(2)}`;
+      send({ type: "aim", x: sx, y: sy });
+    }
+  }
+
+  // Touch events on the touchpad
+  touchpad.addEventListener("touchstart", (e) => {
+    e.preventDefault();
+    const touch = e.touches[0];
+    isTouching = true;
+    const aim = getTouchAim(touch);
+    aimX = aim.x;
+    aimY = aim.y;
+    updateTouchDot(touch);
+    updateCrosshairIndicator();
+    sendAim();
+  }, { passive: false });
+
+  touchpad.addEventListener("touchmove", (e) => {
+    e.preventDefault();
+    if (!isTouching) return;
+    const touch = e.touches[0];
+    const aim = getTouchAim(touch);
+    aimX = aim.x;
+    aimY = aim.y;
+    updateTouchDot(touch);
+    updateCrosshairIndicator();
+    sendAim();
+  }, { passive: false });
+
+  touchpad.addEventListener("touchend", (e) => {
+    e.preventDefault();
+    isTouching = false;
+    touchDot.style.display = "none";
+    // Keep last aim position (don't reset to center)
+  }, { passive: false });
+
+  touchpad.addEventListener("touchcancel", (e) => {
+    isTouching = false;
+    touchDot.style.display = "none";
+  });
+
+  // ===================================================================
+  // PAUSE & RESUME
+  // ===================================================================
   let isPhonePaused = false;
   const pauseBtn = document.getElementById("pause-btn");
 
@@ -525,7 +549,9 @@
     });
   }
 
-  // --- FIRE ---
+  // ===================================================================
+  // FIRE
+  // ===================================================================
   fireBtn.addEventListener("click", () => {
     if (isPhonePaused) return;
     send({ type: "fire" });
@@ -535,7 +561,9 @@
     if (navigator.vibrate) navigator.vibrate(35);
   });
 
-  // --- PLAY AGAIN ---
+  // ===================================================================
+  // PLAY AGAIN
+  // ===================================================================
   playAgainBtn.addEventListener("click", () => {
     resetPauseState();
     send({ type: "restart" });
@@ -545,9 +573,30 @@
     miniAmmoEl.textContent = "5";
     miniAmmoEl.style.color = "var(--ghost)";
     miniScoreEl.textContent = "0";
+    // Reset aim to center
+    aimX = 0;
+    aimY = 0;
+    updateCrosshairIndicator();
     stepGameover.classList.add("hidden");
-    stepPlay.classList.remove("hidden");
+    stepPlay.classList.add("active");
   });
+
+  // ===================================================================
+  // FORCE LANDSCAPE HINT (on portrait screens)
+  // ===================================================================
+  function checkOrientation() {
+    // Only relevant when step-play is visible
+    if (!stepPlay.classList.contains("active")) return;
+    // On small screens in portrait, suggest rotating
+    if (window.innerWidth < window.innerHeight && window.innerWidth < 500) {
+      touchpad.querySelector("#touchpad-label").textContent = "↻ Rotate phone to landscape";
+    } else {
+      touchpad.querySelector("#touchpad-label").textContent = "Drag to aim";
+    }
+  }
+  window.addEventListener("resize", checkOrientation);
+  window.addEventListener("orientationchange", checkOrientation);
+
 </script>
 </body>
 </html>
