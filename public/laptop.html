@@ -1094,6 +1094,7 @@
   let survivalTime = 0;
   let spawnCooldown = 0;
   let currentSpeedMult = 1;
+  let nextBomberTime = 20;
 
   function waveState(t) {
     if (t < 15) return { maxGhosts: 1, speedMult: 1.0 };
@@ -1108,12 +1109,19 @@
     ghosts.length = 0;
     survivalTime = 0;
     spawnCooldown = 0;
+    nextBomberTime = 20;
   }
 
   function trySpawnWave(dt) {
     survivalTime += dt;
     const { maxGhosts, speedMult } = waveState(survivalTime);
     currentSpeedMult = speedMult;
+
+    // Scheduled Bomber Ghost spawns strictly at 20s, 40s, 60s, 80s...
+    if (survivalTime >= nextBomberTime) {
+      spawnGhost("bomber");
+      nextBomberTime += 20;
+    }
 
     spawnCooldown -= dt;
     const aliveCount = ghosts.filter((g) => g.alive && !g.dying).length;
@@ -1152,17 +1160,12 @@
   const ghosts = [];
   const ENTRANCE_TYPES = ["curtain-left", "curtain-right", "cabinet", "edge", "edge"];
 
-  function spawnGhost() {
+  function spawnGhost(forceType) {
     const entrance = ENTRANCE_TYPES[Math.floor(Math.random() * ENTRANCE_TYPES.length)];
-    let gType = "standard";
-    if (entrance === "edge") gType = "fast";
-
-    // Spawn a bomber ghost if none active, score >= 2 (35% chance)
-    const activeBomber = ghosts.some((g) => g.alive && !g.dying && g.type === "bomber");
-    if (!activeBomber && (score >= 2 || survivalTime >= 10) && Math.random() < 0.35) {
-      gType = "bomber";
-    } else if (score >= MANGO_TARGET - 2 || (Math.random() < 0.25 && score >= 5)) {
-      gType = "boss";
+    let gType = forceType || "standard";
+    if (!forceType) {
+      if (entrance === "edge") gType = "fast";
+      if (score >= MANGO_TARGET - 2 || (Math.random() < 0.25 && score >= 5)) gType = "boss";
     }
 
     const g = {
