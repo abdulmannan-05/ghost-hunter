@@ -177,7 +177,10 @@
   .rank-medal{font-size:18px}
   #lb-hint{font-size:13px; color:var(--ink)}
 
-  canvas{display:block; background:#0a0a12}
+  #game-canvas{
+    position:fixed; inset:0; width:100vw; height:100vh;
+    z-index:1; display:block; background:#0a0a12; pointer-events:none;
+  }
 
   /* ================ GEAR ICON & SETTINGS MODAL ================ */
   #gear-btn {
@@ -1300,10 +1303,10 @@
       const renderW = g.radius * 2.4;
       const renderH = renderW * dim.ratio;
 
-      // Add intense red danger aura glow when ghost remains >= 3.0 seconds on screen
+      // Add intense red danger aura glow directly around ghost sprite when remaining >= 3.0s
       if (g.timer >= 3.0 && !g.dying) {
-        ctx.shadowColor = "rgba(255, 25, 25, 1.0)";
-        ctx.shadowBlur = 45 + Math.sin(performance.now() / 100) * 15;
+        ctx.shadowColor = "rgba(255, 20, 20, 1.0)";
+        ctx.shadowBlur = 60 + Math.sin(performance.now() / 90) * 20;
       } else {
         ctx.shadowColor = g.hitTimer > 0 ? "rgba(255,255,255,1.0)" : (g.type === "boss" ? "rgba(255,209,102,0.9)" : (g.type === "fast" ? "rgba(255,37,48,0.9)" : "rgba(99,200,255,0.85)"));
         ctx.shadowBlur = g.hitTimer > 0 ? 55 : 35;
@@ -1318,18 +1321,18 @@
         ctx.drawImage(ghostSprite, -renderW / 2, -renderH / 2, renderW, renderH);
       }
 
-      // Pulsing red danger ring around ghosts staying >= 3 seconds
+      // Red danger aura layer over ghost sprite for ghosts staying >= 3 seconds (No red circle outline!)
       if (g.timer >= 3.0 && !g.dying) {
         ctx.save();
-        ctx.strokeStyle = `rgba(255, 30, 30, ${0.75 + Math.sin(performance.now() / 100) * 0.25})`;
-        ctx.lineWidth = 3.5;
-        ctx.beginPath();
-        ctx.arc(0, 0, renderW * 0.58, 0, Math.PI * 2);
-        ctx.stroke();
+        ctx.globalCompositeOperation = "lighter";
+        ctx.globalAlpha = 0.5 + Math.sin(performance.now() / 100) * 0.25;
+        ctx.shadowColor = "rgba(255, 10, 10, 1.0)";
+        ctx.shadowBlur = 45;
+        ctx.drawImage(ghostSprite, -renderW / 2, -renderH / 2, renderW, renderH);
         ctx.restore();
       }
     } else {
-      ctx.shadowColor = g.timer >= 3.0 ? "rgba(255,30,30,1.0)" : "rgba(99,200,255,0.9)";
+      ctx.shadowColor = g.timer >= 3.0 ? "rgba(255,20,20,1.0)" : "rgba(99,200,255,0.9)";
       ctx.shadowBlur = 45;
       ctx.font = `${g.radius * 2.1}px serif`;
       ctx.textAlign = "center";
@@ -1489,9 +1492,47 @@
     });
   }
 
+  // Ambient Lobby Ghosts (2 ghosts wandering on starting screen so it doesn't feel empty)
+  const lobbyGhosts = [
+    {
+      x: 320, y: 380, vx: 1.2, vy: 0.7, radius: 44, bobPhase: 0,
+      type: "normal", timer: 0, spawnScale: 1, alive: true, dying: false, hitTimer: 0
+    },
+    {
+      x: 1250, y: 420, vx: -1.0, vy: -0.8, radius: 48, bobPhase: 2.1,
+      type: "fast", timer: 0, spawnScale: 1, alive: true, dying: false, hitTimer: 0
+    }
+  ];
+
+  function updateLobbyGhosts(dt) {
+    const W = canvas.width || window.innerWidth;
+    const H = canvas.height || window.innerHeight;
+
+    lobbyGhosts.forEach(g => {
+      g.bobPhase += dt * 2.2;
+      g.x += g.vx;
+      g.y += g.vy;
+
+      const pad = 120;
+      if (g.x < pad || g.x > W - pad) g.vx *= -1;
+      if (g.y < pad + 80 || g.y > H - pad - 120) g.vy *= -1;
+    });
+  }
+
   // ===================================================================
   // MAIN GAME LOOP WITH CAMERA SHAKE
   // ===================================================================
+  let loopStarted = false;
+
+  function ensureLoopRunning() {
+    if (!loopStarted) {
+      loopStarted = true;
+      lastFrameTime = performance.now();
+      resizeCanvas();
+      requestAnimationFrame(loop);
+    }
+  }
+
   function loop(now) {
     const dt = isPaused ? 0 : Math.min(0.05, (now - lastFrameTime) / 1000);
     lastFrameTime = now;
@@ -1529,22 +1570,34 @@
     // Ambient Fog Particles
     drawFog();
 
-    // LAYER 3: Ghost Enemies (Floating in 2D depth space between furniture & curtains!)
-    if (!gameOver && !isPaused) {
-      trySpawnWave(dt);
-      updateGhosts(dt);
-      damageFlashEl.style.opacity = health < MAX_HEALTH * 0.3 ? 0.35 : 0;
+    // LAYER 3: Ghost Enemies (Starting screen displays 2 wandering ghosts!)
+    if (!gameStarted) {
+      updateLobbyGhosts(dt);
+      lobbyGhosts.forEach(drawGhost);
+    } else {
+      if (!gameOver && !isPaused) {
+        trySpawnWave(dt);
+        updateGhosts(dt);
+        damageFlashEl.style.opacity = health < MAX_HEALTH * 0.3 ? 0.35 : 0;
+      }
+      drawAllGhosts();
     }
-    drawAllGhosts();
 
     // LAYER 4: Hit Burst Particles
     updateAndDrawParticles(dt);
 
     ctx.restore(); // Restore camera shake before drawing screen-space HUD crosshair
 
-    drawCrosshair(crosshairPos());
+    if (gameStarted) {
+      drawCrosshair(crosshairPos());
+    }
     requestAnimationFrame(loop);
   }
+
+  // Start background room loop immediately on load
+  window.addEventListener("load", () => {
+    ensureLoopRunning();
+  });
 </script>
 </body>
 </html>
