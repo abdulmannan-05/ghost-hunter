@@ -648,9 +648,18 @@
     }
 
     if (msg.type === "aim") {
-      mouseActive = false; // phone took over aiming
+      if (controlMode === "mouse") return; // ignore phone aim in mouse mode
       targetAimX = msg.x;
       targetAimY = msg.y;
+      return;
+    }
+
+    if (msg.type === "control-mode") {
+      controlMode = msg.mode; // "mouse" or "phone"
+      if (controlMode === "mouse") {
+        canvas.style.pointerEvents = "auto";
+        canvas.style.cursor = "none";
+      }
       return;
     }
 
@@ -963,8 +972,14 @@
   }
 
   function updateAim() {
-    currentAimX += (targetAimX - currentAimX) * 0.35;
-    currentAimY += (targetAimY - currentAimY) * 0.35;
+    // In mouse mode, snap directly to target for crisp, lag-free control
+    if (controlMode === "mouse") {
+      currentAimX += (targetAimX - currentAimX) * 0.85;
+      currentAimY += (targetAimY - currentAimY) * 0.85;
+    } else {
+      currentAimX += (targetAimX - currentAimX) * 0.35;
+      currentAimY += (targetAimY - currentAimY) * 0.35;
+    }
   }
 
   function crosshairPos() {
@@ -1498,11 +1513,11 @@
   // ===================================================================
   // MOUSE / TRACKPAD CROSSHAIR CONTROL + LEFT-CLICK SHOOTING
   // ===================================================================
-  let mouseActive = false; // tracks if mouse is the current input source
+  let controlMode = "phone"; // "phone" or "mouse" — toggled by phone button
 
   canvas.addEventListener("mousemove", (e) => {
     if (!gameStarted || gameOver || isPaused) return;
-    mouseActive = true;
+    if (controlMode !== "mouse") return; // only respond in mouse mode
 
     const rect = canvas.getBoundingClientRect();
     const scaleX = canvas.width / rect.width;
@@ -1522,12 +1537,10 @@
 
   canvas.addEventListener("click", (e) => {
     if (!gameStarted || gameOver || isPaused) return;
+    if (controlMode !== "mouse") return; // only fire via click in mouse mode
     e.preventDefault();
     handleFire();
   });
-
-  // When phone sends aim data, switch back to phone control
-  // (patched into the existing msg.type === "aim" handler below via mouseActive flag)
 
   // Ambient Lobby Ghosts (2 ghosts wandering on starting screen so it doesn't feel empty)
   const lobbyGhosts = [

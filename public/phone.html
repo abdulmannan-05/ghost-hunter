@@ -143,6 +143,7 @@
       <button id="pause-btn" class="secondary" style="flex:1; margin-bottom:0; background:#242438;">⏸️ Pause</button>
       <button id="recalibrate-btn" class="secondary" style="flex:1; margin-bottom:0;">🎯 Calibrate</button>
     </div>
+    <button id="mouse-toggle-btn" class="secondary" style="margin-top:10px; width:100%; max-width:320px; background:#1a1a2e; border:1px solid #3a3a5c; font-size:14px; padding:12px 16px;">🖱️ Shift to Mouse</button>
   </div>
 
   <!-- STEP: GAME OVER -->
@@ -413,9 +414,30 @@
   let targetX = 0, targetY = 0;
   let smoothX = 0, smoothY = 0;
   const LERP_FACTOR = 0.20;
+  let useMouseMode = false; // when true, phone stops sending aim data
+
+  // --- MOUSE / PHONE TOGGLE ---
+  const mouseToggleBtn = document.getElementById("mouse-toggle-btn");
+  const sensControls = document.querySelector("#sens-slider")?.closest("div[style]");
+
+  mouseToggleBtn.addEventListener("click", () => {
+    useMouseMode = !useMouseMode;
+    if (useMouseMode) {
+      mouseToggleBtn.textContent = "📱 Hunt with Phone";
+      mouseToggleBtn.style.background = "var(--gold)";
+      mouseToggleBtn.style.color = "#0c0c14";
+      tiltReadout.textContent = "🖱️ Mouse controlling crosshair";
+      send({ type: "control-mode", mode: "mouse" });
+    } else {
+      mouseToggleBtn.textContent = "🖱️ Shift to Mouse";
+      mouseToggleBtn.style.background = "#1a1a2e";
+      mouseToggleBtn.style.color = "#eaf4ff";
+      send({ type: "control-mode", mode: "phone" });
+    }
+  });
 
   function loop() {
-    if (haveOrientation && !stepPlay.classList.contains("hidden")) {
+    if (haveOrientation && !stepPlay.classList.contains("hidden") && !useMouseMode) {
       const pitchRad = (latest.beta * Math.PI) / 180;
       const deltaGamma = diffAngle(latest.gamma, center.gamma);
       const deltaAlpha = diffAngle(latest.alpha, center.alpha);
