@@ -723,17 +723,25 @@
 
   const MANGO_TARGET = 10;
 
+  function getApiUrl(endpoint) {
+    if (location.protocol === "http:" || location.protocol === "https:") {
+      return endpoint;
+    }
+    const host = location.host || "localhost:3000";
+    return `http://${host}${endpoint}`;
+  }
+
   function addToLeaderboard(name, company, finalScore, result) {
     console.log("[Leaderboard] Saving game result to Google Sheets:", { name, company, score: finalScore, result });
     // POST score instantly to backend (Google Sheets API)
-    fetch("/api/score", {
+    fetch(getApiUrl("/api/score"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name, company, score: finalScore, result })
     })
     .then(r => r.json())
     .then(res => {
-      console.log("[Leaderboard] Saved successfully:", res);
+      console.log("[Leaderboard] Saved successfully to Google Sheets:", res);
       // Fetch latest top 10 from Google Sheets right after saving!
       fetchAndRenderLeaderboard(company ? `${name} (${company})` : name, finalScore);
     })
@@ -756,7 +764,7 @@
   }
 
   function fetchAndRenderLeaderboard(highlightName, highlightScore) {
-    fetch("/api/leaderboard")
+    fetch(getApiUrl("/api/leaderboard"))
       .then(r => r.json())
       .then(entries => {
         if (Array.isArray(entries) && entries.length > 0) {
