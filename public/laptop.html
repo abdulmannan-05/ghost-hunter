@@ -60,7 +60,8 @@
   @keyframes pulse{0%,100%{opacity:1; transform:scale(1)}50%{opacity:.75; transform:scale(1.04)}}
 
   /* ================ GAME ================ */
-  #game-wrap{display:none; width:100%; height:100%; position:relative}
+  #game-canvas{position:fixed; inset:0; width:100vw; height:100vh; z-index:1; display:block}
+  #game-wrap{display:none; position:fixed; inset:0; width:100vw; height:100vh; z-index:10; pointer-events:none}
   #hud{
     position:absolute; top:0; left:0; right:0; display:flex; justify-content:space-between;
     align-items:flex-start; padding:18px 22px; z-index:10; pointer-events:none;
@@ -280,6 +281,9 @@
   </div>
 </div>
 
+<!-- ALWAYS-ON BACKDROP CANVAS ENGINE (Visible in Lobby & Game) -->
+<canvas id="game-canvas"></canvas>
+
 <!-- ============ LOBBY ============ -->
 <div id="lobby">
   <div class="card">
@@ -328,7 +332,6 @@
   <div id="damage-flash"></div>
   <div id="mango-flash"></div>
   <div id="bomber-warning"><span class="warn-icon">💀</span><span class="warn-text">BOMBER INCOMING!</span><span class="warn-timer" id="bomber-timer">5.0</span></div>
-  <canvas id="game-canvas"></canvas>
 </div>
 
 <!-- ============ PAUSE OVERLAY ============ -->
