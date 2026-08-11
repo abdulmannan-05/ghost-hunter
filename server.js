@@ -3,11 +3,118 @@ const http = require("http");
 const { WebSocketServer } = require("ws");
 const os = require("os");
 const path = require("path");
+const fs = require("fs");
 
 const app = express();
+app.use(express.json());
 
 // Serve static files from public directory
 app.use(express.static(path.join(__dirname, "public")));
+
+// CSV file path
+const CSV_PATH = path.join(__dirname, "public", "database", "Ghost_Hunter-Leaderboard - Sheet1.csv");
+
+// Ensure CSV file exists with headers
+function ensureCsvHeaders() {
+    const dir = path.dirname(CSV_PATH);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    if (!fs.existsSync(CSV_PATH) || fs.readFileSync(CSV_PATH, "utf8").trim() === "") {
+        fs.writeFileSync(CSV_PATH, "Timestamp,Player Name,Company,Score,Result\n", "utf8");
+    }
+}
+ensureCsvHeaders();
+
+// Helper: escape a CSV field (wrap in quotes if it contains comma, quote, or newline)
+function csvEscape(val) {
+    const s = String(val);
+    if (s.includes(",") || s.includes('"') || s.includes("\n")) {
+        return '"' + s.replace(/"/g, '""') + '"';
+    }
+    return s;
+}
+
+// POST /api/score — record a game score to CSV
+app.post("/api/score", (req, res) => {
+    try {
+        const { name, company, score, result } = req.body;
+        if (name == null || score == null) {
+            return res.status(400).json({ error: "name and score are required" });
+        }
+        const timestamp = new Date().toISOString();
+        const row = [
+            csvEscape(timestamp),
+            csvEscape(name || "Unknown"),
+            csvEscape(company || ""),
+            csvEscape(Number(score)),
+            csvEscape(result || "loss")
+        ].join(",") + "\n";
+
+        fs.appendFileSync(CSV_PATH, row, "utf8");
+        res.json({ ok: true });
+    } catch (err) {
+        console.error("Error writing score:", err);
+        res.status(500).json({ error: "Failed to save score" });
+    }
+});
+
+// GET /api/leaderboard — return top 10 scores from CSV
+app.get("/api/leaderboard", (req, res) => {
+    try {
+        const content = fs.readFileSync(CSV_PATH, "utf8");
+        const lines = content.trim().split("\n");
+        // Skip header row
+        const entries = [];
+        for (let i = 1; i < lines.length; i++) {
+            const line = lines[i].trim();
+            if (!line) continue;
+            // Simple CSV parse (handles quoted fields)
+            const cols = [];
+            let current = "";
+            let inQuotes = false;
+            for (let c = 0; c < line.length; c++) {
+                if (inQuotes) {
+                    if (line[c] === '"' && line[c + 1] === '"') {
+                        current += '"';
+                        c++;
+                    } else if (line[c] === '"') {
+                        inQuotes = false;
+                    } else {
+                        current += line[c];
+                    }
+                } else {
+                    if (line[c] === '"') {
+                        inQuotes = true;
+                    } else if (line[c] === ',') {
+                        cols.push(current);
+                        current = "";
+                    } else {
+                        current += line[c];
+                    }
+                }
+            }
+            cols.push(current);
+            entries.push({
+                timestamp: cols[0] || "",
+                name: cols[1] || "Unknown",
+                company: cols[2] || "",
+                score: parseInt(cols[3]) || 0,
+                result: cols[4] || "loss"
+            });
+        }
+        // Sort by score descending, then by timestamp ascending (earlier = tiebreaker)
+        entries.sort((a, b) => b.score - a.score || a.timestamp.localeCompare(b.timestamp));
+        // Return top 10
+        res.json(entries.slice(0, 10));
+    } catch (err) {
+        console.error("Error reading leaderboard:", err);
+        res.json([]);
+    }
+});
+
+// GET /api/download-csv — download the full CSV file
+app.get("/api/download-csv", (req, res) => {
+    res.download(CSV_PATH, "Ghost_Hunter_Leaderboard.csv");
+});
 
 // Redirect root route to laptop.html
 app.get("/", (req, res) => {

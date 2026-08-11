@@ -270,6 +270,7 @@
     <div id="qr-box"><div id="qrcode"></div></div>
     <div id="room-code">----</div>
     <div class="hint">Scan with phone camera or open <code id="phone-url">…</code> on phone.</div>
+    <a id="download-csv-btn" href="/api/download-csv" download="Ghost_Hunter_Leaderboard.csv" style="display:inline-block; margin-top:14px; padding:10px 22px; background:linear-gradient(135deg,#1a1a2e,#242438); border:1px solid #3a3a5c; border-radius:10px; color:#eaf4ff; font-size:13px; font-weight:700; letter-spacing:1px; text-decoration:none; cursor:pointer; transition:all .2s;">📥 Download Leaderboard CSV</a>
   </div>
 </div>
 
@@ -722,10 +723,17 @@
 
   const MANGO_TARGET = 10;
 
-  function addToLeaderboard(name, finalScore) {
+  function addToLeaderboard(name, company, finalScore, result) {
+    // POST score to backend CSV (every game is recorded)
+    fetch("/api/score", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, company, score: finalScore, result })
+    }).catch(err => console.warn("Failed to save score:", err));
+
+    // Also update local in-memory list for immediate display
     const existing = leaderboard.find(e => e.name.toLowerCase() === name.toLowerCase());
     if (existing) {
-      // Only update if the new score beats their previous high score!
       if (finalScore > existing.score) {
         existing.score = finalScore;
         existing.time = Date.now();
@@ -734,7 +742,7 @@
       leaderboard.push({ name, score: finalScore, time: Date.now() });
     }
     leaderboard.sort((a, b) => b.score - a.score || a.time - b.time);
-    if (leaderboard.length > 20) leaderboard.length = 20;
+    if (leaderboard.length > 10) leaderboard.length = 10;
   }
 
   function renderLeaderboard(highlightName, highlightScore) {
@@ -758,8 +766,24 @@
   }
 
   function showLeaderboard(name, finalScore) {
-    renderLeaderboard(name, finalScore);
-    leaderboardWrapEl.style.display = "flex";
+    // Fetch latest top 10 from backend before rendering
+    fetch("/api/leaderboard")
+      .then(r => r.json())
+      .then(entries => {
+        // Replace local leaderboard with backend data
+        leaderboard.length = 0;
+        entries.forEach(e => {
+          const displayName = e.company ? `${e.name} (${e.company})` : e.name;
+          leaderboard.push({ name: displayName, score: e.score, time: new Date(e.timestamp).getTime() });
+        });
+        renderLeaderboard(name, finalScore);
+        leaderboardWrapEl.style.display = "flex";
+      })
+      .catch(() => {
+        // Fallback to local data
+        renderLeaderboard(name, finalScore);
+        leaderboardWrapEl.style.display = "flex";
+      });
   }
 
   // ===================================================================
@@ -893,7 +917,7 @@
     leaderboardWrapEl.style.display = "none";
     sendToPhone({ type: "game-over", score, win: isWin });
 
-    addToLeaderboard(fullHunterName, score);
+    addToLeaderboard(playerName, companyName, score, isWin ? "win" : "loss");
 
     if (gameOverTimeout) clearTimeout(gameOverTimeout);
     gameOverTimeout = setTimeout(() => {
