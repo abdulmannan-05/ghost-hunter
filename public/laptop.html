@@ -835,13 +835,14 @@
   const MAX_HEALTH = 100;
   const DAMAGE_PER_SECOND = 2.2;
   const START_AMMO = 5;
-  const MAX_AMMO = 8;
-  const AMMO_PER_KILL = 2;
+  const MAX_AMMO = 5;
+  const AMMO_PER_KILL = 1;
   const RELOAD_TIME_MS = 1200;
 
   let score = 0;
   let health = MAX_HEALTH;
   let ammo = START_AMMO;
+  let shotsFiredSinceReload = 0;
   let reloading = false;
   let gameOver = false;
   let isPaused = false;
@@ -907,6 +908,7 @@
     renderAmmoUI();
     setTimeout(() => {
       ammo = START_AMMO;
+      shotsFiredSinceReload = 0;
       reloading = false;
       renderAmmoUI();
     }, RELOAD_TIME_MS);
@@ -971,6 +973,7 @@
     score = 0;
     health = MAX_HEALTH;
     ammo = START_AMMO;
+    shotsFiredSinceReload = 0;
     reloading = false;
     gameOver = false;
     isPaused = false;
@@ -1505,6 +1508,7 @@
 
     soundMgr.play("shoot");
     ammo -= 1;
+    shotsFiredSinceReload += 1;
     renderAmmoUI();
 
     // Trigger crosshair recoil animation
@@ -1531,6 +1535,7 @@
       score += 1;
       scoreValueEl.textContent = score;
       ammo = Math.min(MAX_AMMO, ammo + AMMO_PER_KILL);
+      shotsFiredSinceReload = Math.max(0, shotsFiredSinceReload - 1);
       health = Math.min(MAX_HEALTH, health + 10);
       renderHealthUI();
       renderAmmoUI();
@@ -1551,7 +1556,9 @@
       }
     }
 
-    if (ammo <= 0) startReload();
+    if (shotsFiredSinceReload >= 2 || ammo <= 0) {
+      startReload();
+    }
   }
 
   function flashHit() {
