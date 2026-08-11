@@ -48,16 +48,24 @@
   .hint{font-size:11px; color:rgba(234,244,255,0.75); line-height:1.5}
   .hint code{background:rgba(255,255,255,.1); padding:2px 6px; border-radius:4px; font-size:10px; color:var(--ghost)}
 
-  /* ================ GET READY ================ */
+  /* ================ GET READY / RULES ================ */
   #get-ready{
     position:fixed; inset:0; display:none; align-items:center; justify-content:center;
-    flex-direction:column; gap:12px;
-    background:radial-gradient(120% 90% at 50% 40%,#1a1330,#07070c 70%); z-index:20;
+    background:radial-gradient(120% 90% at 50% 40%, rgba(20,10,25,0.94), rgba(7,7,12,0.97));
+    z-index:30; padding:20px; backdrop-filter:blur(14px);
   }
-  #get-ready h2{font-size:58px; font-weight:800; letter-spacing:5px; text-transform:uppercase; color:#eaf4ff;
-    text-shadow:0 0 40px rgba(99,200,255,.5); animation:pulse 1s ease-in-out infinite}
-  #get-ready .player-tag{font-size:16px; color:var(--ghost); letter-spacing:2px; opacity:.8}
-  @keyframes pulse{0%,100%{opacity:1; transform:scale(1)}50%{opacity:.75; transform:scale(1.04)}}
+  .rules-card{
+    background:rgba(14,14,24,0.88); border:1px solid rgba(255,37,48,0.4); border-radius:20px;
+    padding:32px 40px; max-width:540px; width:100%; text-align:center;
+    box-shadow:0 0 60px rgba(255,37,48,0.3), inset 0 0 30px rgba(255,37,48,0.1);
+  }
+  .rules-card .player-tag{font-size:14px; letter-spacing:2px; color:var(--ghost); text-transform:uppercase; margin-bottom:8px}
+  .rules-card h2{font-size:32px; font-weight:800; letter-spacing:3px; color:#ff2530; text-shadow:0 0 20px rgba(255,37,48,0.7); margin-bottom:20px}
+  .rules-list{list-style:none; text-align:left; display:flex; flex-direction:column; gap:12px; margin-bottom:24px}
+  .rules-list li{font-size:14px; line-height:1.45; color:#eaf4ff; display:flex; align-items:flex-start; gap:10px}
+  .rules-list li b{color:#ffd166}
+  .rules-timer{font-size:15px; font-weight:800; letter-spacing:2px; color:var(--ghost); text-transform:uppercase; text-shadow:0 0 10px rgba(99,200,255,0.5)}
+  .rules-timer b{color:#ff2530; font-size:22px}
 
   /* ================ GAME ================ */
   #game-canvas{position:fixed; inset:0; width:100vw; height:100vh; z-index:1; display:block}
@@ -295,10 +303,19 @@
   </div>
 </div>
 
-<!-- ============ GET READY ============ -->
+<!-- ============ SCARY INSTRUCTIONS SCREEN ============ -->
 <div id="get-ready">
-  <div class="player-tag">🎮 <span id="ready-player-name">Hunter</span></div>
-  <h2>Get Ready…</h2>
+  <div class="rules-card">
+    <div class="player-tag">🎮 HUNTER: <b id="ready-player-name">Hunter</b></div>
+    <h2>⚠️ SURVIVAL RULES</h2>
+    <ul class="rules-list">
+      <li>🎯 <span><b>Aim & Shoot:</b> Drag phone touchpad to aim, tap FIRE to shoot.</span></li>
+      <li>⚡ <span><b>Ammo:</b> 5 bullets max. Auto-reloads after 2 shots. Kill ghosts to get +2 bullets!</span></li>
+      <li>💀 <span><b>Defeat Bombers:</b> Eliminate Bomber Skulls within 5 seconds before they explode!</span></li>
+      <li>🩸 <span><b>Survive:</b> Avoid ghost attacks and capture as many ghosts as possible!</span></li>
+    </ul>
+    <div class="rules-timer">HUNT BEGINS IN <b id="rules-countdown">5</b>s…</div>
+  </div>
 </div>
 
 <!-- ============ GAME ============ -->
@@ -794,7 +811,22 @@
     leaderboardWrapEl.style.display = "none";
     gameOverEl.style.display = "none";
     getReadyEl.style.display = "flex";
+
+    // 5-second countdown timer for rules screen
+    let secondsLeft = 5;
+    const countEl = document.getElementById("rules-countdown");
+    if (countEl) countEl.textContent = "5";
+
+    const countInterval = setInterval(() => {
+      secondsLeft -= 1;
+      if (countEl) countEl.textContent = Math.max(0, secondsLeft);
+      if (secondsLeft <= 0) {
+        clearInterval(countInterval);
+      }
+    }, 1000);
+
     setTimeout(() => {
+      clearInterval(countInterval);
       getReadyEl.style.display = "none";
       gameWrapEl.style.display = "block";
       canvas.style.pointerEvents = "auto";
@@ -805,7 +837,7 @@
       resetWaveSystem();
       lastFrameTime = performance.now();
       requestAnimationFrame(loop);
-    }, 1600);
+    }, 5000);
   }
 
   // ===================================================================
