@@ -242,6 +242,7 @@
     <div id="controls-column">
       <button id="fire-btn">FIRE</button>
       <button id="pause-btn" class="ctrl-btn secondary">⏸️ Pause</button>
+      <button id="pc-toggle-btn" class="ctrl-btn secondary" style="background:#1a1a2e; border:1px solid #3a3a5c;">🖥️ Hunt by PC</button>
       <div id="sens-row">
         <label>Sensitivity <span id="sens-val">1.5x</span></label>
         <input type="range" id="sens-slider" min="0.5" max="4.0" step="0.1" value="1.5">
@@ -285,6 +286,8 @@
   const touchDot = document.getElementById("touch-dot");
   const touchpadCrosshair = document.getElementById("touchpad-crosshair");
 
+  const pcToggleBtn = document.getElementById("pc-toggle-btn");
+
   // Phone audio & haptics
   const shootSound = new Audio("assets/audio/shoot.wav");
   shootSound.preload = "auto";
@@ -293,6 +296,7 @@
   let userSensitivity = 1.5;
   let playerName = "Hunter";
   let companyName = "";
+  let useMouseMode = false;
 
   sensSlider.addEventListener("input", (e) => {
     userSensitivity = parseFloat(e.target.value);
@@ -477,6 +481,7 @@
 
   touchpad.addEventListener("touchstart", (e) => {
     e.preventDefault();
+    if (useMouseMode) return; // ignore phone touch aim in mouse mode
     // Only claim the first finger that lands on the touchpad
     if (touchpadTouchId === null) {
       const touch = e.changedTouches[0];
@@ -492,7 +497,7 @@
 
   touchpad.addEventListener("touchmove", (e) => {
     e.preventDefault();
-    if (touchpadTouchId === null) return;
+    if (useMouseMode || touchpadTouchId === null) return;
     const touch = findTouch(e.touches, touchpadTouchId);
     if (!touch) return;
     const aim = getTouchAim(touch);
@@ -523,6 +528,54 @@
       }
     }
   });
+
+  // ===================================================================
+  // PC / PHONE CONTROL MODE TOGGLE
+  // ===================================================================
+  let lastToggleTime = 0;
+  function toggleControlMode() {
+    const now = performance.now();
+    if (now - lastToggleTime < 300) return;
+    lastToggleTime = now;
+
+    useMouseMode = !useMouseMode;
+    const touchpadLabel = touchpad.querySelector("#touchpad-label");
+
+    if (useMouseMode) {
+      if (pcToggleBtn) {
+        pcToggleBtn.textContent = "📱 Hunt by Phone";
+        pcToggleBtn.style.background = "var(--gold)";
+        pcToggleBtn.style.color = "#0c0c14";
+        pcToggleBtn.style.borderColor = "var(--mango)";
+      }
+      tiltReadout.textContent = "🖱️ PC Mouse Aim Active";
+      if (touchpadLabel) touchpadLabel.textContent = "Controlled by PC Mouse 🖱️";
+      touchpad.style.opacity = "0.45";
+      send({ type: "control-mode", mode: "mouse" });
+    } else {
+      if (pcToggleBtn) {
+        pcToggleBtn.textContent = "🖥️ Hunt by PC";
+        pcToggleBtn.style.background = "#1a1a2e";
+        pcToggleBtn.style.color = "#eaf4ff";
+        pcToggleBtn.style.borderColor = "#3a3a5c";
+      }
+      tiltReadout.textContent = "aim: 0.00, 0.00";
+      if (touchpadLabel) touchpadLabel.textContent = "Drag to aim";
+      touchpad.style.opacity = "1";
+      send({ type: "control-mode", mode: "phone" });
+    }
+  }
+
+  if (pcToggleBtn) {
+    pcToggleBtn.addEventListener("touchstart", (e) => {
+      e.preventDefault();
+      toggleControlMode();
+    }, { passive: false });
+    pcToggleBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      toggleControlMode();
+    });
+  }
 
   // ===================================================================
   // PAUSE & RESUME
