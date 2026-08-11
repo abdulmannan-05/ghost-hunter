@@ -167,16 +167,25 @@ app.get("/api/leaderboard", async (req, res) => {
                 // Skip header row (index 0)
                 for (let i = 1; i < rows.length; i++) {
                     const row = rows[i];
-                    if (!row || row.length < 4) continue;
+                    if (!row || row.length < 3) continue;
+                    // Format: [timestamp, name, company, score, result]
+                    // If company is empty, score might be at index 3 or index 2
+                    let rawScore = row[3];
+                    let rawCompany = row[2];
+                    if (row.length === 3) {
+                        // [timestamp, name, score]
+                        rawCompany = "";
+                        rawScore = row[2];
+                    }
                     entries.push({
                         timestamp: row[0] || "",
                         name: row[1] || "Unknown",
-                        company: row[2] || "",
-                        score: parseInt(row[3]) || 0,
+                        company: rawCompany || "",
+                        score: parseInt(rawScore) || 0,
                         result: row[4] || "loss"
                     });
                 }
-                console.log(`[Sheets] Leaderboard fetched: ${entries.length} total entries.`);
+                console.log(`[Sheets] Leaderboard fetched: ${entries.length} valid entries.`);
             } catch (sheetErr) {
                 console.error("[Sheets] Error reading from Google Sheet:", sheetErr.message);
             }

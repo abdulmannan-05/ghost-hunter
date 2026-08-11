@@ -924,10 +924,14 @@
     if (health <= 0) triggerGameOver();
   }
 
+  let gameOverAlreadyTriggered = false;
   let gameOverTimeout = null;
 
   function triggerGameOver() {
+    if (gameOverAlreadyTriggered) return;
+    gameOverAlreadyTriggered = true;
     gameOver = true;
+
     const isWin = score >= MANGO_TARGET;
     if (isWin) {
       soundMgr.play("win");
@@ -943,6 +947,7 @@
     leaderboardWrapEl.style.display = "none";
     sendToPhone({ type: "game-over", score, win: isWin });
 
+    // Upload result to Google Sheets instantly on Game Over
     addToLeaderboard(playerName, companyName, score, isWin ? "win" : "loss");
 
     if (gameOverTimeout) clearTimeout(gameOverTimeout);
@@ -951,10 +956,11 @@
         gameOverEl.style.display = "none";
         showLeaderboard(fullHunterName, score);
       }
-    }, 3500);
+    }, 2000);
   }
 
   function restartGame() {
+    gameOverAlreadyTriggered = false;
     if (gameOverTimeout) {
       clearTimeout(gameOverTimeout);
       gameOverTimeout = null;
