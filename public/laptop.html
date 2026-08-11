@@ -874,12 +874,21 @@
 
   function renderAmmoUI() {
     ammoBulletsEl.innerHTML = "";
-    for (let i = 0; i < MAX_AMMO; i++) {
+    const displayCount = Math.max(5, ammo);
+    for (let i = 0; i < displayCount; i++) {
       const b = document.createElement("div");
       b.className = "bullet" + (i < ammo ? " filled" : "");
       ammoBulletsEl.appendChild(b);
     }
-    reloadLabelEl.classList.toggle("show", reloading);
+    if (reloading) {
+      reloadLabelEl.textContent = "RELOADING...";
+      reloadLabelEl.classList.add("show");
+    } else if (ammo <= 0) {
+      reloadLabelEl.textContent = "NO AMMO!";
+      reloadLabelEl.classList.add("show");
+    } else {
+      reloadLabelEl.classList.remove("show");
+    }
     sendToPhone({ type: "state", ammo, reloading });
   }
 
@@ -903,11 +912,11 @@
 
   function startReload() {
     if (reloading || gameOver) return;
+    if (ammo <= 0) return;
     reloading = true;
     soundMgr.play("reload");
     renderAmmoUI();
     setTimeout(() => {
-      ammo = START_AMMO;
       shotsFiredSinceReload = 0;
       reloading = false;
       renderAmmoUI();
@@ -1504,7 +1513,10 @@
   function handleFire() {
     if (gameOver || reloading || isPaused) return;
 
-    if (ammo <= 0) { startReload(); return; }
+    if (ammo <= 0) {
+      renderAmmoUI();
+      return;
+    }
 
     soundMgr.play("shoot");
     ammo -= 1;
@@ -1534,7 +1546,7 @@
       soundMgr.play("ghost");
       score += 1;
       scoreValueEl.textContent = score;
-      ammo = Math.min(MAX_AMMO, ammo + AMMO_PER_KILL);
+      ammo += 1; // Ghost kill drops 1 bullet!
       shotsFiredSinceReload = Math.max(0, shotsFiredSinceReload - 1);
       health = Math.min(MAX_HEALTH, health + 10);
       renderHealthUI();
@@ -1556,7 +1568,7 @@
       }
     }
 
-    if (shotsFiredSinceReload >= 2 || ammo <= 0) {
+    if (shotsFiredSinceReload >= 2 && ammo > 0) {
       startReload();
     }
   }
