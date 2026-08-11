@@ -488,7 +488,8 @@
     background: new Image(),
     ghost: new Image(),
     candleSheet: new Image(),
-    fireSheet: new Image()
+    fireSheet: new Image(),
+    shotgun: new Image()
   };
 
   const roomAssetsProcessed = {};
@@ -497,6 +498,34 @@
   function processChromaKey(img, key) {
     if (key === "background") return img; // Main room backdrop stays solid
     if (key === "fireSheet") return img;  // fire_sheet.png already has RGBA alpha channel
+
+    // Shotgun sprite: cyan (#00FFFF) background chroma key
+    if (key === "shotgun") {
+      try {
+        const offscreen = document.createElement("canvas");
+        const w = img.naturalWidth || img.width;
+        const h = img.naturalHeight || img.height;
+        if (!w || !h) return img;
+        offscreen.width = w;
+        offscreen.height = h;
+        const octx = offscreen.getContext("2d");
+        octx.drawImage(img, 0, 0);
+        const imgData = octx.getImageData(0, 0, w, h);
+        const data = imgData.data;
+        for (let i = 0; i < data.length; i += 4) {
+          const r = data[i], g = data[i + 1], b = data[i + 2];
+          // Key out cyan background: high green + high blue, low red
+          if (r < 100 && g > 200 && b > 200) {
+            data[i + 3] = 0;
+          }
+        }
+        octx.putImageData(imgData, 0, 0);
+        return offscreen;
+      } catch (e) {
+        console.warn("Shotgun chroma key failed", e);
+        return img;
+      }
+    }
 
     try {
       const offscreen = document.createElement("canvas");
@@ -564,6 +593,7 @@
   roomAssets.ghost.src = "assets/sprites/ghost.png";
   roomAssets.candleSheet.src = "assets/sprites/candle_sheet.png";
   roomAssets.fireSheet.src = "assets/sprites/fire_sheet.png";
+  roomAssets.shotgun.src = "assets/sprites/shortgun-sprite.png";
 
   // ===================================================================
   // CONNECTION + PAIRING
@@ -1508,6 +1538,65 @@
   }
 
   // ===================================================================
+  // SHOTGUN SPRITE RENDERER
+  // ===================================================================
+  // Sprite sheet: 306x1582, stacked vertically. Frame 0 (idle) = top 158 rows.
+  // The sprite is a DOOM-style first-person shotgun held from bottom-right.
+  // We render it at bottom-center of the screen, tilting toward the crosshair.
+  const SHOTGUN_FRAME_W = 306;
+  const SHOTGUN_FRAME_H = 158;
+  let shotgunRecoilAnim = 0; // 0 = idle, >0 = recoiling
+
+  function drawShotgun() {
+    if (!roomAssetsLoaded.shotgun) return;
+    const img = getAsset("shotgun");
+    const W = canvas.width;
+    const H = canvas.height;
+
+    // Scale the shotgun to a reasonable screen size
+    const scale = Math.min(W, H) / 280;
+    const drawW = SHOTGUN_FRAME_W * scale;
+    const drawH = SHOTGUN_FRAME_H * scale;
+
+    // Anchor position: bottom-center of screen
+    const anchorX = W / 2;
+    const anchorY = H + drawH * 0.08;
+
+    // Calculate aim angle: angle from anchor to crosshair position
+    const chPos = crosshairPos();
+    const dx = chPos.x - anchorX;
+    const dy = chPos.y - anchorY;
+    // aimAngle: positive = crosshair is right of center, negative = left
+    const aimAngle = Math.atan2(dx, -dy);
+    // Clamp tilt so the gun doesn't flip wildly
+    const clampedAngle = Math.max(-0.6, Math.min(0.6, aimAngle * 0.55));
+
+    // Recoil: push gun down briefly when firing
+    const recoilOffset = shotgunRecoilAnim * 30 * scale;
+
+    ctx.save();
+    ctx.translate(anchorX, anchorY + recoilOffset);
+    ctx.rotate(clampedAngle);
+
+    // Draw only frame 0 (idle) from the sprite sheet
+    // Source: top-left of sheet, SHOTGUN_FRAME_W x SHOTGUN_FRAME_H
+    // Destination: centered on anchor, extending upward
+    ctx.drawImage(
+      img,
+      0, 0, SHOTGUN_FRAME_W, SHOTGUN_FRAME_H,   // source rect (frame 0)
+      -drawW / 2, -drawH, drawW, drawH            // dest rect (centered, above anchor)
+    );
+
+    ctx.restore();
+
+    // Decay recoil animation
+    if (shotgunRecoilAnim > 0) {
+      shotgunRecoilAnim *= 0.82;
+      if (shotgunRecoilAnim < 0.01) shotgunRecoilAnim = 0;
+    }
+  }
+
+  // ===================================================================
   // FIRE HANDLER WITH IMPACT FEEDBACK
   // ===================================================================
   function handleFire() {
@@ -1519,6 +1608,7 @@
     }
 
     soundMgr.play("shoot");
+    shotgunRecoilAnim = 1.0; // Trigger shotgun recoil animation
     ammo -= 1;
     shotsFiredSinceReload += 1;
     renderAmmoUI();
@@ -1718,6 +1808,11 @@
     updateAndDrawParticles(dt);
 
     ctx.restore(); // Restore camera shake before drawing screen-space HUD crosshair
+
+    // LAYER 5: Shotgun Sprite (screen-space, tracks crosshair)
+    if (gameStarted) {
+      drawShotgun();
+    }
 
     if (gameStarted) {
       drawCrosshair(crosshairPos());
