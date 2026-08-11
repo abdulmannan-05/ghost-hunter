@@ -507,6 +507,7 @@
   // ===================================================================
   const roomAssets = {
     background: new Image(),
+    startingScreen: new Image(),
     ghost: new Image(),
     candleSheet: new Image(),
     fireSheet: new Image(),
@@ -520,7 +521,7 @@
   const roomAssetsLoaded = {};
 
   function processChromaKey(img, key) {
-    if (key === "background") return img; // Main room backdrop stays solid
+    if (key === "background" || key === "startingScreen") return img; // Room & Starting backdrop stay solid
     if (key === "fireSheet") return img;  // fire_sheet.png already has RGBA alpha channel
     if (key === "flyerGhost") return img; // flying-ghost.png already has native RGBA alpha channel
     if (key === "furyGhost") return img;  // Fury.png already has native RGBA alpha channel
@@ -646,6 +647,7 @@
   }
 
   roomAssets.background.src = "assets/images/background.png";
+  roomAssets.startingScreen.src = "assets/images/starting_screen.png";
   roomAssets.ghost.src = "assets/sprites/ghost.png";
   roomAssets.candleSheet.src = "assets/sprites/candle_sheet.png";
   roomAssets.fireSheet.src = "assets/sprites/fire_sheet.png";
@@ -1323,7 +1325,7 @@
   // MULTI-LAYER 2D PARALLAX ENVIRONMENT RENDERER
   // ===================================================================
 
-  // Layer 0: Unified Parallax Room Backdrop (background.png)
+  // Layer 0: Backdrop (starting_screen.png for Lobby, background.png for Game)
   function drawParallaxBackground() {
     const W = canvas.width || window.innerWidth;
     const H = canvas.height || window.innerHeight;
@@ -1332,6 +1334,14 @@
     const px = aimX * 16;
     const py = aimY * 12;
     const margin = 60;
+
+    if (!gameStarted) {
+      if (roomAssetsLoaded.startingScreen) {
+        const img = getAsset("startingScreen");
+        ctx.drawImage(img, 0, 0, W, H);
+      }
+      return;
+    }
 
     if (roomAssetsLoaded.background) {
       const img = getAsset("background");
@@ -2012,14 +2022,16 @@
       ctx.translate(shakeX, shakeY);
     }
 
-    // LAYER 0: Unified Parallax Room Backdrop (background.png)
+    // LAYER 0: Background (starting_screen.png for Lobby, background.png for Game)
     drawParallaxBackground();
 
-    // LAYER 1: Animated Wall Candle Sconces (candle_sheet.png)
-    drawAnimatedCandles();
+    if (gameStarted) {
+      // LAYER 1: Animated Wall Candle Sconces (candle_sheet.png)
+      drawAnimatedCandles();
 
-    // LAYER 2: Continuous Floor Fire beside Cabinet (fire_sheet.png at red circle position)
-    drawContinuousFire();
+      // LAYER 2: Continuous Floor Fire (fire_sheet.png)
+      drawContinuousFire();
+    }
 
     // Ambient Fog Particles
     drawFog();
