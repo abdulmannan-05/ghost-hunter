@@ -1558,29 +1558,33 @@
     const drawW = SHOTGUN_FRAME_W * scale;
     const drawH = SHOTGUN_FRAME_H * scale;
 
-    // Anchor position: bottom-center of screen
-    const anchorX = W / 2;
-    const anchorY = H + drawH * 0.08;
+    // The sprite frame has the gun barrel in the upper-right and
+    // the hand/grip in the lower-left, so the visual center of the
+    // gun is offset from the frame center. Shift left to compensate.
+    const visualCenterOffsetX = -drawW * 0.18;
 
-    // Calculate aim angle: angle from anchor to crosshair position
+    // Crosshair-relative horizontal slide:
+    // Map crosshair X from screen coords to a slide range
     const chPos = crosshairPos();
-    const dx = chPos.x - anchorX;
-    const dy = chPos.y - anchorY;
-    // aimAngle: positive = crosshair is right of center, negative = left
-    const aimAngle = Math.atan2(dx, -dy);
-    // Clamp tilt so the gun doesn't flip wildly
-    const clampedAngle = Math.max(-0.6, Math.min(0.6, aimAngle * 0.55));
+    const crosshairNormX = (chPos.x - W / 2) / (W / 2); // -1 (left) to +1 (right)
+    const slideRange = W * 0.18; // max horizontal slide distance
+    const slideX = crosshairNormX * slideRange;
+
+    // Very subtle tilt for natural weapon sway (±5° max, not full rotation)
+    const tiltAngle = crosshairNormX * 0.09; // ~5° at extreme aim
+
+    // Anchor: bottom-center of screen
+    const baseX = W / 2 + visualCenterOffsetX + slideX;
+    const baseY = H + drawH * 0.08;
 
     // Recoil: push gun down briefly when firing
     const recoilOffset = shotgunRecoilAnim * 30 * scale;
 
     ctx.save();
-    ctx.translate(anchorX, anchorY + recoilOffset);
-    ctx.rotate(clampedAngle);
+    ctx.translate(baseX, baseY + recoilOffset);
+    ctx.rotate(tiltAngle);
 
     // Draw only frame 0 (idle) from the sprite sheet
-    // Source: top-left of sheet, SHOTGUN_FRAME_W x SHOTGUN_FRAME_H
-    // Destination: centered on anchor, extending upward
     ctx.drawImage(
       img,
       0, 0, SHOTGUN_FRAME_W, SHOTGUN_FRAME_H,   // source rect (frame 0)
