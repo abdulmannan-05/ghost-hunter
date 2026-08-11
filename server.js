@@ -106,8 +106,11 @@ app.post("/api/score", async (req, res) => {
                 await sheetsApi.spreadsheets.values.append({
                     spreadsheetId: SHEET_ID,
                     range: `${SHEET_RANGE}!A:E`,
-                    valueInputOption: "RAW",
+                    valueInputOption: "USER_ENTERED",
                     insertDataOption: "INSERT_ROWS",
+                    requestBody: {
+                        values: [[timestamp, playerName, playerCompany, finalScore, gameResult]],
+                    },
                     resource: {
                         values: [[timestamp, playerName, playerCompany, finalScore, gameResult]],
                     },

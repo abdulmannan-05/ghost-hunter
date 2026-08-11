@@ -724,25 +724,54 @@
   const MANGO_TARGET = 10;
 
   function addToLeaderboard(name, company, finalScore, result) {
-    // POST score to backend CSV (every game is recorded)
+    console.log("[Leaderboard] Saving game result to Google Sheets:", { name, company, score: finalScore, result });
+    // POST score instantly to backend (Google Sheets API)
     fetch("/api/score", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name, company, score: finalScore, result })
-    }).catch(err => console.warn("Failed to save score:", err));
+    })
+    .then(r => r.json())
+    .then(res => {
+      console.log("[Leaderboard] Saved successfully:", res);
+      // Fetch latest top 10 from Google Sheets right after saving!
+      fetchAndRenderLeaderboard(company ? `${name} (${company})` : name, finalScore);
+    })
+    .catch(err => console.error("[Leaderboard] Save failed:", err));
 
-    // Also update local in-memory list for immediate display
-    const existing = leaderboard.find(e => e.name.toLowerCase() === name.toLowerCase());
+    // Update local list immediately
+    const displayName = company ? `${name} (${company})` : name;
+    const existing = leaderboard.find(e => e.name.toLowerCase() === displayName.toLowerCase());
     if (existing) {
       if (finalScore > existing.score) {
         existing.score = finalScore;
         existing.time = Date.now();
       }
     } else {
-      leaderboard.push({ name, score: finalScore, time: Date.now() });
+      leaderboard.push({ name: displayName, score: finalScore, time: Date.now() });
     }
     leaderboard.sort((a, b) => b.score - a.score || a.time - b.time);
     if (leaderboard.length > 10) leaderboard.length = 10;
+    renderLeaderboard(displayName, finalScore);
+  }
+
+  function fetchAndRenderLeaderboard(highlightName, highlightScore) {
+    fetch("/api/leaderboard")
+      .then(r => r.json())
+      .then(entries => {
+        if (Array.isArray(entries) && entries.length > 0) {
+          leaderboard.length = 0;
+          entries.forEach(e => {
+            const displayName = e.company ? `${e.name} (${e.company})` : e.name;
+            leaderboard.push({ name: displayName, score: e.score, time: new Date(e.timestamp).getTime() });
+          });
+        }
+        renderLeaderboard(highlightName, highlightScore);
+      })
+      .catch(err => {
+        console.warn("[Leaderboard] Error fetching leaderboard:", err);
+        renderLeaderboard(highlightName, highlightScore);
+      });
   }
 
   function renderLeaderboard(highlightName, highlightScore) {
@@ -766,25 +795,14 @@
   }
 
   function showLeaderboard(name, finalScore) {
-    // Fetch latest top 10 from backend before rendering
-    fetch("/api/leaderboard")
-      .then(r => r.json())
-      .then(entries => {
-        // Replace local leaderboard with backend data
-        leaderboard.length = 0;
-        entries.forEach(e => {
-          const displayName = e.company ? `${e.name} (${e.company})` : e.name;
-          leaderboard.push({ name: displayName, score: e.score, time: new Date(e.timestamp).getTime() });
-        });
-        renderLeaderboard(name, finalScore);
-        leaderboardWrapEl.style.display = "flex";
-      })
-      .catch(() => {
-        // Fallback to local data
-        renderLeaderboard(name, finalScore);
-        leaderboardWrapEl.style.display = "flex";
-      });
+    fetchAndRenderLeaderboard(name, finalScore);
+    leaderboardWrapEl.style.display = "flex";
   }
+
+  // Pre-fetch live leaderboard from Google Sheets on startup
+  window.addEventListener("load", () => {
+    fetchAndRenderLeaderboard();
+  });
 
   // ===================================================================
   // GAME ENGINE
@@ -1510,6 +1528,9 @@
         soundMgr.play("win");
         flashMango();
         sendToPhone({ type: "mango-reached" });
+        setTimeout(() => {
+          triggerGameOver();
+        }, 800);
       }
     }
 
