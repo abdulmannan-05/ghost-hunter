@@ -648,6 +648,7 @@
     }
 
     if (msg.type === "aim") {
+      mouseActive = false; // phone took over aiming
       targetAimX = msg.x;
       targetAimY = msg.y;
       return;
@@ -692,6 +693,8 @@
     setTimeout(() => {
       getReadyEl.style.display = "none";
       gameWrapEl.style.display = "block";
+      canvas.style.pointerEvents = "auto";
+      canvas.style.cursor = "none"; // hide system cursor, show custom crosshair
       resizeCanvas();
       renderHealthUI();
       renderAmmoUI();
@@ -1491,6 +1494,40 @@
       mangoFlashEl.style.opacity = "0";
     });
   }
+
+  // ===================================================================
+  // MOUSE / TRACKPAD CROSSHAIR CONTROL + LEFT-CLICK SHOOTING
+  // ===================================================================
+  let mouseActive = false; // tracks if mouse is the current input source
+
+  canvas.addEventListener("mousemove", (e) => {
+    if (!gameStarted || gameOver || isPaused) return;
+    mouseActive = true;
+
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const px = (e.clientX - rect.left) * scaleX;
+    const py = (e.clientY - rect.top) * scaleY;
+
+    // Convert pixel coords back to normalized -1..+1 range (inverse of crosshairPos)
+    const margin = 60;
+    targetAimX = ((px - margin) / (canvas.width - margin * 2)) * 2 - 1;
+    targetAimY = ((py - margin) / (canvas.height - margin * 2)) * 2 - 1;
+
+    // Clamp to valid range
+    targetAimX = Math.max(-1, Math.min(1, targetAimX));
+    targetAimY = Math.max(-1, Math.min(1, targetAimY));
+  });
+
+  canvas.addEventListener("click", (e) => {
+    if (!gameStarted || gameOver || isPaused) return;
+    e.preventDefault();
+    handleFire();
+  });
+
+  // When phone sends aim data, switch back to phone control
+  // (patched into the existing msg.type === "aim" handler below via mouseActive flag)
 
   // Ambient Lobby Ghosts (2 ghosts wandering on starting screen so it doesn't feel empty)
   const lobbyGhosts = [
