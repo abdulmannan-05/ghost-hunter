@@ -22,82 +22,97 @@ app.use((req, res, next) => {
 app.use(express.static(path.join(__dirname, "public")));
 
 // ===================================================================
-// GOOGLE SHEETS INTEGRATION
+// SQLITE DATABASE ENGINE
 // ===================================================================
-const SHEET_ID = "1T_xPqKqKmbY4uYvw9XPlN-p2ITZg1_QrGiIPe9xAkos";
-const SERVICE_ACCOUNT_PATH = path.join(__dirname, "public", "database", "calendar-service-account.json");
-const SHEET_RANGE = "Sheet1"; // Sheet tab name
-const CSV_PATH = path.join(__dirname, "public", "database", "Ghost_Hunter-Leaderboard - Sheet1.csv");
+const Database = require("better-sqlite3");
 
-let sheetsApi = null;
+const DB_DIR = path.join(__dirname, "public", "database");
+if (!fs.existsSync(DB_DIR)) fs.mkdirSync(DB_DIR, { recursive: true });
 
-async function initGoogleSheets() {
-    try {
-        let credentials = null;
-        if (process.env.GOOGLE_SERVICE_ACCOUNT_JSON) {
-            credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON);
-        } else if (fs.existsSync(SERVICE_ACCOUNT_PATH)) {
-            credentials = JSON.parse(fs.readFileSync(SERVICE_ACCOUNT_PATH, "utf8"));
-        } else {
-            throw new Error("No Google Service Account credentials found.");
-        }
-        const auth = new google.auth.GoogleAuth({
-            credentials,
-            scopes: ["https://www.googleapis.com/auth/spreadsheets"],
-        });
-        const authClient = await auth.getClient();
-        sheetsApi = google.sheets({ version: "v4", auth: authClient });
+const DB_PATH = path.join(DB_DIR, "ghost_hunter.db");
+const CSV_PATH = path.join(DB_DIR, "Ghost_Hunter-Leaderboard - Sheet1.csv");
 
-        // Ensure header row exists
-        const headerRes = await sheetsApi.spreadsheets.values.get({
-            spreadsheetId: SHEET_ID,
-            range: `${SHEET_RANGE}!A1:E1`,
-        });
-        const headerRow = headerRes.data.values;
-        if (!headerRow || headerRow.length === 0 || headerRow[0][0] !== "Timestamp") {
-            await sheetsApi.spreadsheets.values.update({
-                spreadsheetId: SHEET_ID,
-                range: `${SHEET_RANGE}!A1:E1`,
-                valueInputOption: "RAW",
-                resource: {
-                    values: [["Timestamp", "Player Name", "Company", "Score", "Result"]],
-                },
-            });
-            console.log("[Sheets] Header row created in Google Sheet.");
-        }
+const db = new Database(DB_PATH);
+db.pragma("journal_mode = WAL"); // High performance Write-Ahead Logging
 
-        console.log("[Sheets] Google Sheets API initialized successfully.");
-    } catch (err) {
-        console.error("[Sheets] Failed to initialize Google Sheets API:", err.message);
-        console.log("[Sheets] Falling back to local CSV only.");
-        sheetsApi = null;
-    }
-}
+// Initialize table schema
+db.exec(`
+    CREATE TABLE IF NOT EXISTS scores (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        timestamp TEXT NOT NULL,
+        name TEXT NOT NULL,
+        company TEXT,
+        score INTEGER NOT NULL,
+        result TEXT NOT NULL
+    )
+`);
 
-// Initialize Google Sheets on startup
-initGoogleSheets();
-
-// Local CSV fallback — ensure file exists with headers
-function ensureCsvHeaders() {
-    const dir = path.dirname(CSV_PATH);
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-    if (!fs.existsSync(CSV_PATH) || fs.readFileSync(CSV_PATH, "utf8").trim() === "") {
-        fs.writeFileSync(CSV_PATH, "Timestamp,Player Name,Company,Score,Result\n", "utf8");
-    }
-}
-ensureCsvHeaders();
+console.log("[SQLite] Database initialized at:", DB_PATH);
 
 // Helper: escape a CSV field
 function csvEscape(val) {
-    const s = String(val);
+    const s = String(val == null ? "" : val);
     if (s.includes(",") || s.includes('"') || s.includes("\n")) {
         return '"' + s.replace(/"/g, '""') + '"';
     }
     return s;
 }
 
-// POST /api/score — record a game score to Google Sheets + local CSV
-app.post("/api/score", async (req, res) => {
+// Auto-migrate legacy CSV data into SQLite if table is currently empty
+try {
+    const countRow = db.prepare("SELECT COUNT(*) AS count FROM scores").get();
+    if (countRow.count === 0 && fs.existsSync(CSV_PATH)) {
+        const content = fs.readFileSync(CSV_PATH, "utf8");
+        const lines = content.trim().split("\n");
+        const insertStmt = db.prepare("INSERT INTO scores (timestamp, name, company, score, result) VALUES (?, ?, ?, ?, ?)");
+        let migratedCount = 0;
+        
+        for (let i = 1; i < lines.length; i++) {
+            const line = lines[i].trim();
+            if (!line) continue;
+            const cols = [];
+            let current = "";
+            let inQuotes = false;
+            for (let c = 0; c < line.length; c++) {
+                if (inQuotes) {
+                    if (line[c] === '"' && line[c + 1] === '"') {
+                        current += '"';
+                        c++;
+                    } else if (line[c] === '"') {
+                        inQuotes = false;
+                    } else {
+                        current += line[c];
+                    }
+                } else {
+                    if (line[c] === '"') {
+                        inQuotes = true;
+                    } else if (line[c] === ',') {
+                        cols.push(current);
+                        current = "";
+                    } else {
+                        current += line[c];
+                    }
+                }
+            }
+            cols.push(current);
+
+            const ts = cols[0] || new Date().toISOString();
+            const nm = cols[1] || "Unknown";
+            const comp = cols[2] || "";
+            const sc = parseInt(cols[3]) || 0;
+            const res = cols[4] || "loss";
+
+            insertStmt.run(ts, nm, comp, sc, res);
+            migratedCount++;
+        }
+        console.log(`[SQLite] Migrated ${migratedCount} existing scores from CSV into database.`);
+    }
+} catch (migErr) {
+    console.warn("[SQLite] Migration warning:", migErr.message);
+}
+
+// POST /api/score — record a new game score into SQLite database
+app.post("/api/score", (req, res) => {
     try {
         const { name, company, score, result } = req.body;
         if (name == null || score == null) {
@@ -109,168 +124,76 @@ app.post("/api/score", async (req, res) => {
         const finalScore = Number(score);
         const gameResult = result || "loss";
 
-        // 1. Write to Google Sheets (primary)
-        if (sheetsApi) {
-            try {
-                await sheetsApi.spreadsheets.values.append({
-                    spreadsheetId: SHEET_ID,
-                    range: `${SHEET_RANGE}!A:E`,
-                    valueInputOption: "USER_ENTERED",
-                    insertDataOption: "INSERT_ROWS",
-                    requestBody: {
-                        values: [[timestamp, playerName, playerCompany, finalScore, gameResult]],
-                    },
-                    resource: {
-                        values: [[timestamp, playerName, playerCompany, finalScore, gameResult]],
-                    },
-                });
-                console.log(`[Sheets] Score saved: ${playerName} (${playerCompany}) = ${finalScore}`);
-            } catch (sheetErr) {
-                console.error("[Sheets] Error writing to Google Sheet:", sheetErr.message);
-            }
-        }
+        // Insert score into SQLite database
+        const stmt = db.prepare("INSERT INTO scores (timestamp, name, company, score, result) VALUES (?, ?, ?, ?, ?)");
+        stmt.run(timestamp, playerName, playerCompany, finalScore, gameResult);
 
-        // 2. Also write to local CSV (backup/mirror)
+        console.log(`[SQLite] Score saved: ${playerName} (${playerCompany}) = ${finalScore}`);
+
+        // Also append to local CSV file backup
         try {
-            const row = [
+            const csvRow = [
                 csvEscape(timestamp),
                 csvEscape(playerName),
                 csvEscape(playerCompany),
                 csvEscape(finalScore),
                 csvEscape(gameResult)
             ].join(",") + "\n";
-            fs.appendFileSync(CSV_PATH, row, "utf8");
+            fs.appendFileSync(CSV_PATH, csvRow, "utf8");
         } catch (csvErr) {
-            console.warn("[Local CSV Mirror] Could not append row locally (file locked):", csvErr.message);
+            // Ignore CSV append errors
         }
 
         res.json({ ok: true, timestamp });
     } catch (err) {
-        console.error("Error writing score:", err);
+        console.error("[SQLite] Error saving score:", err);
         res.status(500).json({ error: "Failed to save score" });
     }
 });
 
-// GET /api/leaderboard — return top 10 scores from Google Sheets (or local CSV fallback)
-app.get("/api/leaderboard", async (req, res) => {
+// GET /api/leaderboard — return Top 10 highest scoring games from SQLite database
+app.get("/api/leaderboard", (req, res) => {
     try {
-        let entries = [];
+        const rows = db.prepare(`
+            SELECT timestamp, name, company, score, result
+            FROM scores
+            ORDER BY score DESC, timestamp ASC
+            LIMIT 10
+        `).all();
 
-        // Try Google Sheets first
-        if (sheetsApi) {
-            try {
-                const response = await sheetsApi.spreadsheets.values.get({
-                    spreadsheetId: SHEET_ID,
-                    range: `${SHEET_RANGE}!A:E`,
-                });
-                const rows = response.data.values || [];
-                // Skip header row (index 0)
-                for (let i = 1; i < rows.length; i++) {
-                    const row = rows[i];
-                    if (!row || row.length < 3) continue;
-                    // Format: [timestamp, name, company, score, result]
-                    // If company is empty, score might be at index 3 or index 2
-                    let rawScore = row[3];
-                    let rawCompany = row[2];
-                    if (row.length === 3) {
-                        // [timestamp, name, score]
-                        rawCompany = "";
-                        rawScore = row[2];
-                    }
-                    entries.push({
-                        timestamp: row[0] || "",
-                        name: row[1] || "Unknown",
-                        company: rawCompany || "",
-                        score: parseInt(rawScore) || 0,
-                        result: row[4] || "loss"
-                    });
-                }
-                console.log(`[Sheets] Leaderboard fetched: ${entries.length} valid entries.`);
-            } catch (sheetErr) {
-                console.error("[Sheets] Error reading from Google Sheet:", sheetErr.message);
-            }
-        }
-
-        // Fallback to local CSV if Sheets returned nothing
-        if (entries.length === 0) {
-            const content = fs.readFileSync(CSV_PATH, "utf8");
-            const lines = content.trim().split("\n");
-            for (let i = 1; i < lines.length; i++) {
-                const line = lines[i].trim();
-                if (!line) continue;
-                const cols = [];
-                let current = "";
-                let inQuotes = false;
-                for (let c = 0; c < line.length; c++) {
-                    if (inQuotes) {
-                        if (line[c] === '"' && line[c + 1] === '"') {
-                            current += '"';
-                            c++;
-                        } else if (line[c] === '"') {
-                            inQuotes = false;
-                        } else {
-                            current += line[c];
-                        }
-                    } else {
-                        if (line[c] === '"') {
-                            inQuotes = true;
-                        } else if (line[c] === ',') {
-                            cols.push(current);
-                            current = "";
-                        } else {
-                            current += line[c];
-                        }
-                    }
-                }
-                cols.push(current);
-                entries.push({
-                    timestamp: cols[0] || "",
-                    name: cols[1] || "Unknown",
-                    company: cols[2] || "",
-                    score: parseInt(cols[3]) || 0,
-                    result: cols[4] || "loss"
-                });
-            }
-        }
-
-        // Sort by score descending, then by timestamp ascending
-        entries.sort((a, b) => b.score - a.score || a.timestamp.localeCompare(b.timestamp));
-        // Return top 10
-        res.json(entries.slice(0, 10));
+        res.json(rows);
     } catch (err) {
-        console.error("Error reading leaderboard:", err);
+        console.error("[SQLite] Error reading leaderboard:", err);
         res.json([]);
     }
 });
 
-// GET /api/download-csv — download all scores as CSV (from Google Sheets if available)
-app.get("/api/download-csv", async (req, res) => {
+// GET /api/download-csv — download ALL games played from database as CSV file
+app.get("/api/download-csv", (req, res) => {
     try {
-        if (sheetsApi) {
-            try {
-                const response = await sheetsApi.spreadsheets.values.get({
-                    spreadsheetId: SHEET_ID,
-                    range: `${SHEET_RANGE}!A:E`,
-                });
-                const rows = response.data.values || [];
-                // Build CSV from Sheets data
-                let csv = "";
-                rows.forEach(row => {
-                    csv += row.map(cell => csvEscape(cell || "")).join(",") + "\n";
-                });
-                res.setHeader("Content-Type", "text/csv");
-                res.setHeader("Content-Disposition", 'attachment; filename="Ghost_Hunter_Leaderboard.csv"');
-                return res.send(csv);
-            } catch (sheetErr) {
-                console.error("[Sheets] Error downloading from Google Sheet:", sheetErr.message);
-                // Fall through to local CSV
-            }
-        }
-        // Fallback: serve local CSV file
-        res.download(CSV_PATH, "Ghost_Hunter_Leaderboard.csv");
+        const rows = db.prepare(`
+            SELECT timestamp, name, company, score, result
+            FROM scores
+            ORDER BY timestamp ASC
+        `).all();
+
+        let csv = "Timestamp,Player Name,Company,Score,Result\n";
+        rows.forEach(row => {
+            csv += [
+                csvEscape(row.timestamp),
+                csvEscape(row.name),
+                csvEscape(row.company),
+                csvEscape(row.score),
+                csvEscape(row.result)
+            ].join(",") + "\n";
+        });
+
+        res.setHeader("Content-Type", "text/csv");
+        res.setHeader("Content-Disposition", 'attachment; filename="Ghost_Hunter_Leaderboard.csv"');
+        return res.send(csv);
     } catch (err) {
-        console.error("Error downloading CSV:", err);
-        res.status(500).send("Failed to download CSV");
+        console.error("[SQLite] Error exporting CSV:", err);
+        res.status(500).send("Failed to export CSV");
     }
 });
 
