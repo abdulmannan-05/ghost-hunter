@@ -119,6 +119,23 @@
     opacity:0; transition:opacity 150ms}
   #reload-label.show{opacity:1}
 
+  /* BOMBER WARNING BANNER */
+  #bomber-warning{
+    position:fixed; top:18px; left:50%; transform:translateX(-50%);
+    display:none; align-items:center; gap:12px;
+    padding:10px 28px; border-radius:12px; z-index:30;
+    background:rgba(180,20,20,0.88); border:2px solid #ff4444;
+    box-shadow:0 0 40px rgba(255,30,30,0.6), inset 0 0 20px rgba(255,60,60,0.2);
+    backdrop-filter:blur(8px);
+    animation:bomberPulse 0.5s ease-in-out infinite;
+  }
+  #bomber-warning.active{display:flex}
+  #bomber-warning .warn-icon{font-size:28px; animation:bomberShake 0.3s linear infinite}
+  #bomber-warning .warn-text{font-size:15px; font-weight:800; letter-spacing:2px; text-transform:uppercase; color:#fff; text-shadow:0 0 10px rgba(255,100,100,0.8)}
+  #bomber-warning .warn-timer{font-size:32px; font-weight:800; color:#ffd166; text-shadow:0 0 16px rgba(255,209,102,0.9); min-width:40px; text-align:center}
+  @keyframes bomberPulse{0%,100%{box-shadow:0 0 40px rgba(255,30,30,0.6), inset 0 0 20px rgba(255,60,60,0.2)}50%{box-shadow:0 0 70px rgba(255,30,30,0.9), inset 0 0 30px rgba(255,60,60,0.4)}}
+  @keyframes bomberShake{0%,100%{transform:rotate(0deg)}25%{transform:rotate(-8deg)}75%{transform:rotate(8deg)}}
+
   #room-badge{
     background:rgba(12,12,20,.85); border:1px solid rgba(42,42,61,.7); border-radius:10px;
     padding:6px 12px; font-size:10px; font-weight:700; letter-spacing:2px; color:rgba(154,160,180,.6); text-transform:uppercase;
@@ -310,6 +327,7 @@
   <div id="hit-flash"></div>
   <div id="damage-flash"></div>
   <div id="mango-flash"></div>
+  <div id="bomber-warning"><span class="warn-icon">💀</span><span class="warn-text">BOMBER INCOMING!</span><span class="warn-timer" id="bomber-timer">3.0</span></div>
   <canvas id="game-canvas"></canvas>
 </div>
 
@@ -489,7 +507,8 @@
     ghost: new Image(),
     candleSheet: new Image(),
     fireSheet: new Image(),
-    shotgun: new Image()
+    shotgun: new Image(),
+    blastGhost: new Image()
   };
 
   const roomAssetsProcessed = {};
@@ -523,6 +542,36 @@
         return offscreen;
       } catch (e) {
         console.warn("Shotgun chroma key failed", e);
+        return img;
+      }
+    }
+
+    // Blasting ghost sprite: blue-gray background chroma key
+    if (key === "blastGhost") {
+      try {
+        const offscreen = document.createElement("canvas");
+        const w = img.naturalWidth || img.width;
+        const h = img.naturalHeight || img.height;
+        if (!w || !h) return img;
+        offscreen.width = w;
+        offscreen.height = h;
+        const octx = offscreen.getContext("2d");
+        octx.drawImage(img, 0, 0);
+        const imgData = octx.getImageData(0, 0, w, h);
+        const data = imgData.data;
+        for (let i = 0; i < data.length; i += 4) {
+          const r = data[i], g = data[i + 1], b = data[i + 2];
+          // Key out the blue-gray background and cyan highlights
+          const isBluishGray = (Math.abs(r - g) < 30 && Math.abs(g - b) < 30 && r > 100 && r < 210 && g > 120);
+          const isCyan = (r < 100 && g > 200 && b > 200);
+          if (isBluishGray || isCyan) {
+            data[i + 3] = 0;
+          }
+        }
+        octx.putImageData(imgData, 0, 0);
+        return offscreen;
+      } catch (e) {
+        console.warn("Blast ghost chroma key failed", e);
         return img;
       }
     }
@@ -594,6 +643,7 @@
   roomAssets.candleSheet.src = "assets/sprites/candle_sheet.png";
   roomAssets.fireSheet.src = "assets/sprites/fire_sheet.png";
   roomAssets.shotgun.src = "assets/sprites/shortgun-sprite.png";
+  roomAssets.blastGhost.src = "assets/sprites/blasting-ghost.png";
 
   // ===================================================================
   // CONNECTION + PAIRING
@@ -1025,6 +1075,7 @@
     gameOverEl.style.display = "none";
     leaderboardWrapEl.style.display = "none";
     document.getElementById("pause-overlay").style.display = "none";
+    document.getElementById("bomber-warning").classList.remove("active");
     gameWrapEl.style.display = "block";
     resetWaveSystem();
     initFog();
@@ -1105,12 +1156,20 @@
     const entrance = ENTRANCE_TYPES[Math.floor(Math.random() * ENTRANCE_TYPES.length)];
     let gType = "standard";
     if (entrance === "edge") gType = "fast";
-    if (score >= MANGO_TARGET - 2 || (Math.random() < 0.25 && score >= 5)) gType = "boss";
+
+    // Spawn a bomber ghost if none active, score >= 2 (35% chance)
+    const activeBomber = ghosts.some((g) => g.alive && !g.dying && g.type === "bomber");
+    if (!activeBomber && (score >= 2 || survivalTime >= 10) && Math.random() < 0.35) {
+      gType = "bomber";
+    } else if (score >= MANGO_TARGET - 2 || (Math.random() < 0.25 && score >= 5)) {
+      gType = "boss";
+    }
 
     const g = {
       alive: true, dying: false, dieProgress: 0, spawnScale: 0,
-      radius: gType === "boss" ? 64 : (gType === "fast" ? 48 : 54),
+      radius: gType === "boss" ? 64 : (gType === "bomber" ? 58 : (gType === "fast" ? 48 : 54)),
       entrance, phase: "entering", timer: 0, type: gType,
+      fuseTimer: gType === "bomber" ? 3.0 : 0,
       x: 0, y: 0, vx: 0, vy: 0, bobPhase: Math.random() * Math.PI * 2,
       hitTimer: 0
     };
@@ -1132,8 +1191,8 @@
       const tx = canvas.width / 2 + (Math.random() - 0.5) * canvas.width * 0.4;
       const ty = canvas.height / 2 + (Math.random() - 0.5) * canvas.height * 0.3;
       const ang = Math.atan2(ty - g.y, tx - g.x);
-      g.vx = Math.cos(ang) * (gType === "fast" ? 7.5 : 5.5);
-      g.vy = Math.sin(ang) * (gType === "fast" ? 7.5 : 5.5);
+      g.vx = Math.cos(ang) * (gType === "fast" ? 7.5 : (gType === "bomber" ? 6.5 : 5.5));
+      g.vy = Math.sin(ang) * (gType === "fast" ? 7.5 : (gType === "bomber" ? 6.5 : 5.5));
     }
 
     ghosts.push(g);
@@ -1161,12 +1220,26 @@
       g.timer += dt;
       g.bobPhase += dt * 2.5;
 
-      // Deplete 3 health points when ghost stays on screen for 3+ seconds (repeats every 3 seconds)
-      if (g.timer >= 3.0) {
-        if (g.lastDamageTime === undefined) g.lastDamageTime = 0;
-        if (g.timer - g.lastDamageTime >= 3.0) {
-          g.lastDamageTime = g.timer;
-          takeDamage(3);
+      // Bomber 3-second fuse countdown & explosion
+      if (g.type === "bomber" && !g.dying && g.alive) {
+        g.fuseTimer -= dt;
+        if (g.fuseTimer <= 0) {
+          g.fuseTimer = 0;
+          g.alive = false;
+          takeDamage(10);
+          screenShakeIntensity = 2.8;
+          soundMgr.play("damage");
+          spawnHitParticles(g.x, g.y);
+          flashHit();
+        }
+      } else if (g.type !== "bomber") {
+        // Deplete 3 health points when ghost stays on screen for 3+ seconds (repeats every 3 seconds)
+        if (g.timer >= 3.0) {
+          if (g.lastDamageTime === undefined) g.lastDamageTime = 0;
+          if (g.timer - g.lastDamageTime >= 3.0) {
+            g.lastDamageTime = g.timer;
+            takeDamage(3);
+          }
         }
       }
 
@@ -1196,6 +1269,20 @@
         if (g.y < pad + 60 || g.y > canvas.height - pad) g.vy *= -1;
         g.x = Math.max(pad, Math.min(canvas.width - pad, g.x));
         g.y = Math.max(pad + 60, Math.min(canvas.height - pad, g.y));
+      }
+    }
+
+    // Update Bomber Emergency HUD Warning Banner
+    const activeBombers = ghosts.filter((g) => g.alive && !g.dying && g.type === "bomber");
+    const warnEl = document.getElementById("bomber-warning");
+    const timerEl = document.getElementById("bomber-timer");
+    if (warnEl && timerEl) {
+      if (activeBombers.length > 0) {
+        const minFuse = Math.min(...activeBombers.map((g) => g.fuseTimer));
+        warnEl.classList.add("active");
+        timerEl.textContent = Math.max(0, minFuse).toFixed(1) + "s";
+      } else {
+        warnEl.classList.remove("active");
       }
     }
   }
@@ -1417,7 +1504,43 @@
     const ghostSprite = getAsset("ghost");
     const spriteLoaded = roomAssetsLoaded.ghost;
 
-    if (spriteLoaded) {
+    if (g.type === "bomber" && roomAssetsLoaded.blastGhost) {
+      const blastSprite = getAsset("blastGhost");
+      // Frame 0 on sheet (front-facing flaming skull)
+      const sx = 42, sy = 25, sw = 88, sh = 92;
+      const renderW = g.radius * 2.6;
+      const renderH = renderW * (sh / sw);
+
+      // Pulsing intense fiery red/orange emergency glow
+      const isUrgent = g.fuseTimer < 1.0;
+      const pulse = Math.sin(performance.now() / (isUrgent ? 30 : 60)) * 20;
+      ctx.shadowColor = isUrgent ? "rgba(255, 30, 30, 1.0)" : "rgba(255, 120, 0, 0.95)";
+      ctx.shadowBlur = 50 + pulse;
+
+      ctx.drawImage(blastSprite, sx, sy, sw, sh, -renderW / 2, -renderH / 2, renderW, renderH);
+
+      if (g.hitTimer > 0) {
+        ctx.globalCompositeOperation = "lighter";
+        ctx.globalAlpha = Math.max(0, g.hitTimer * 2.5);
+        ctx.drawImage(blastSprite, sx, sy, sw, sh, -renderW / 2, -renderH / 2, renderW, renderH);
+      }
+
+      // Draw active countdown timer badge right above the creature
+      if (!g.dying) {
+        ctx.save();
+        ctx.scale(1 / Math.max(0.1, scale), 1 / Math.max(0.1, scale)); // crisp unscaled text
+        ctx.font = "900 22px 'Outfit', sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillStyle = isUrgent ? "#ff2530" : "#ffd166";
+        ctx.strokeStyle = "#000";
+        ctx.lineWidth = 4;
+        const timeStr = "⚠️ " + Math.max(0, g.fuseTimer).toFixed(1) + "s";
+        const textY = -renderH / 2 * scale - 14;
+        ctx.strokeText(timeStr, 0, textY);
+        ctx.fillText(timeStr, 0, textY);
+        ctx.restore();
+      }
+    } else if (spriteLoaded) {
       const dim = getAssetDim("ghost");
       const renderW = g.radius * 2.4;
       const renderH = renderW * dim.ratio;
