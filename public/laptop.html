@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Ghost Hunter — Event Edition</title>
-<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;700;800&family=Creepster&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;700;800&family=Creepster&family=Bricolage+Grotesque:wght@700;800&family=JetBrains+Mono:wght@400;500&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <style>
   :root{
@@ -92,50 +92,83 @@
   }
   #pc-start-btn:active{transform:translateY(4px); box-shadow:0 2px 0 #a3131c}
 
-  /* ================ GET READY / RULES (Gamified HUD) ================ */
+  /* ================ GET READY / RULES — "Eldritch Cinema Noir" ================ */
   #get-ready{
     position:fixed; inset:0; display:none; align-items:center; justify-content:center;
-    background:radial-gradient(120% 90% at 50% 40%, rgba(20,10,25,0.94), rgba(7,7,12,0.97));
+    background:radial-gradient(120% 90% at 50% 40%, rgba(20,10,25,0.94), rgba(5,5,5,0.97));
     z-index:30; padding:20px; backdrop-filter:blur(14px);
   }
-  @keyframes rulesGlow{
-    0%,100%{box-shadow:0 0 60px rgba(255,37,48,0.32), 0 0 110px rgba(139,92,246,0.14), inset 0 0 30px rgba(255,37,48,0.12)}
-    50%{box-shadow:0 0 92px rgba(255,37,48,0.55), 0 0 140px rgba(139,92,246,0.24), inset 0 0 40px rgba(255,37,48,0.2)}
+  /* Layer 4: external flicker glow, pulsing 10%→30% opacity in blood red */
+  @keyframes eldritchGlow{
+    0%,100%{box-shadow:0 0 40px rgba(139,0,0,0.10), inset 0 0 34px rgba(0,0,0,0.65)}
+    50%{box-shadow:0 0 74px rgba(139,0,0,0.30), inset 0 0 44px rgba(0,0,0,0.75)}
   }
-  @keyframes rulesNumPulse{
-    0%,100%{transform:scale(1)}
-    50%{transform:scale(1.18)}
+  /* Layer 2: grain/noise overlay that never sits still */
+  @keyframes grainShift{
+    0%{transform:translate(0,0)} 20%{transform:translate(-2%,2%)} 40%{transform:translate(2%,-2%)}
+    60%{transform:translate(-1%,-1%)} 80%{transform:translate(1%,2%)} 100%{transform:translate(0,0)}
+  }
+  @keyframes heartbeatPulse{
+    0%,100%{transform:scale(1)} 25%{transform:scale(1.22)} 40%{transform:scale(1)} 55%{transform:scale(1.14)} 70%{transform:scale(1)}
   }
   .rules-card{
-    position:relative; background:rgba(14,14,24,0.92); border:1px solid rgba(255,37,48,0.5); border-radius:22px;
-    padding:28px 34px; max-width:600px; width:100%; text-align:center;
-    animation:rulesGlow 2.2s ease-in-out infinite;
+    position:relative; overflow:hidden;
+    /* Layer 1: ~80% opaque near-black base, purple-tinted */
+    background:linear-gradient(155deg, rgba(98,37,153,0.20) 0%, #0e0e0e 55%, #050505 100%);
+    /* Layer 3: 1px internal stroke, semi-transparent purple */
+    border:1px solid rgba(98,37,153,0.55);
+    border-radius:0; /* shapes are strictly sharp — 0 corner radius everywhere */
+    clip-path:polygon(0 0, calc(100% - 30px) 0, 100% 30px, 100% 100%, 30px 100%, 0 calc(100% - 30px)); /* clipped corners: top-right & bottom-left */
+    padding:34px 38px; max-width:620px; width:100%; text-align:center;
+    animation:eldritchGlow 2.4s ease-in-out infinite;
+  }
+  .rules-card::after{
+    content:''; position:absolute; inset:0; pointer-events:none;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
+    opacity:0.06; mix-blend-mode:overlay; animation:grainShift 6s steps(6) infinite;
   }
   .rules-close-btn{
-    position:absolute; top:12px; right:14px; display:none; align-items:center; justify-content:center;
-    width:34px; height:34px; background:rgba(255,255,255,0.06); border:1px solid var(--line); border-radius:50%;
-    color:var(--ink); font-size:22px; cursor:pointer; line-height:1; padding:0; transition:color 0.15s, border-color 0.15s;
+    position:absolute; top:16px; right:40px; display:none; align-items:center; justify-content:center;
+    width:32px; height:32px; background:transparent; border:2px solid rgba(170,137,132,0.55); border-radius:0;
+    color:#e5e2e1; font-size:20px; cursor:pointer; line-height:1; padding:0; transition:color 0.15s, border-color 0.15s;
   }
-  .rules-close-btn:hover{color:#fff; border-color:var(--ghost)}
-  .rules-card .player-tag{font-family:'Outfit',sans-serif; font-weight:800; font-size:11px; letter-spacing:3px; color:var(--ghost); text-transform:uppercase; margin-bottom:8px}
+  .rules-close-btn:hover{color:#00dddd; border-color:#00dddd}
+  .rules-card .player-tag{
+    font-family:'Space Mono',monospace; font-weight:700; font-size:12px; letter-spacing:0.22em;
+    color:#00dddd; text-shadow:0 0 8px rgba(0,221,221,0.55); text-transform:uppercase; margin-bottom:10px;
+  }
   .rules-card h2{
-    font-family:'Creepster',cursive; font-weight:400; font-size:36px; letter-spacing:1.5px;
-    background:linear-gradient(135deg,#ff2530 20%,#ff6b6b 55%,var(--occult) 100%);
-    -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
-    text-shadow:0 0 26px rgba(255,37,48,0.55);
-    margin-bottom:20px;
+    font-family:'Bricolage Grotesque',sans-serif; font-weight:800; font-size:34px; letter-spacing:-0.03em; line-height:1.1;
+    color:#ff907f; text-shadow:0 0 20px rgba(139,0,0,0.7), 0 0 38px rgba(98,37,153,0.4);
+    transform:skewX(-2deg); display:inline-block; margin-bottom:22px;
   }
-  .rules-list{list-style:none; display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:22px}
+  .rules-list{list-style:none; display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:24px; position:relative}
   .rules-list li{
-    display:flex; flex-direction:column; align-items:center; gap:5px; text-align:center;
-    background:rgba(255,150,60,0.06); border:1px solid rgba(255,180,80,0.22); border-radius:14px;
-    padding:14px 10px;
+    display:flex; flex-direction:column; align-items:center; gap:6px; text-align:center;
+    background:rgba(20,14,24,0.55); border:1px solid rgba(139,0,0,0.5); border-radius:0;
+    padding:16px 10px;
   }
-  .rules-list li .r-icon{font-size:26px; filter:drop-shadow(0 0 8px rgba(255,180,80,0.65))}
-  .rules-list li .r-label{font-family:'Outfit',sans-serif; font-weight:800; font-size:12px; letter-spacing:1.5px; color:#ffd166; text-transform:uppercase}
-  .rules-list li .r-desc{font-size:12px; line-height:1.35; color:rgba(234,244,255,0.85)}
-  .rules-timer{font-family:'Outfit',sans-serif; font-weight:800; font-size:13px; letter-spacing:2px; color:var(--ghost); text-transform:uppercase; text-shadow:0 0 10px rgba(99,200,255,0.5)}
-  .rules-timer b{display:inline-block; color:#ff2530; font-size:26px; text-shadow:0 0 16px rgba(255,37,48,0.85); animation:rulesNumPulse 1s ease-in-out infinite}
+  .r-icon-badge{
+    width:44px; height:44px; border-radius:50%; /* icon badges stay circular — the one deliberate soft shape amid the sharp frame */
+    display:flex; align-items:center; justify-content:center; margin-bottom:2px;
+  }
+  .r-icon-badge .r-icon{font-size:19px; filter:none}
+  .r-icon-badge.badge-red{background:radial-gradient(circle at 35% 30%, #b3362b, #690000 85%); box-shadow:0 0 14px rgba(139,0,0,0.6)}
+  .r-icon-badge.badge-purple{background:radial-gradient(circle at 35% 30%, #7a35b8, #4a0080 85%); box-shadow:0 0 14px rgba(98,37,153,0.6)}
+  .r-icon-badge.badge-dark{background:radial-gradient(circle at 35% 30%, #3a3939, #1c1b1b 85%); box-shadow:0 0 10px rgba(0,0,0,0.7)}
+  .rules-list li .r-label{font-family:'Space Mono',monospace; font-weight:700; font-size:12px; letter-spacing:0.14em; text-transform:uppercase}
+  .r-label.label-red{color:#ff907f}
+  .r-label.label-purple{color:#ddb7ff}
+  .r-label.label-white{color:#e5e2e1}
+  .rules-list li .r-desc{font-family:'JetBrains Mono',monospace; font-size:11px; line-height:1.4; color:#e3beb8}
+  .rules-timer{
+    font-family:'Space Mono',monospace; font-weight:700; font-size:12px; letter-spacing:0.25em;
+    color:#00dddd; text-transform:uppercase; text-shadow:0 0 10px rgba(0,221,221,0.5);
+  }
+  .rules-timer b{
+    display:inline-block; font-family:'Bricolage Grotesque',sans-serif; font-weight:800; font-size:28px;
+    color:#ff907f; text-shadow:0 0 18px rgba(139,0,0,0.85); animation:heartbeatPulse 1s ease-in-out infinite;
+  }
 
   /* ================ GAME ================ */
   #game-canvas{position:fixed; inset:0; width:100vw; height:100vh; z-index:1; display:block}
@@ -450,10 +483,10 @@
     <div class="player-tag">🎮 HUNTER: <b id="ready-player-name">Hunter</b></div>
     <h2>⚠️ SURVIVAL RULES</h2>
     <ul class="rules-list">
-      <li><span class="r-icon">🎯</span><span class="r-label">Aim & Fire</span><span class="r-desc">Drag to aim · Tap FIRE</span></li>
-      <li><span class="r-icon">⚡</span><span class="r-label">Ammo</span><span class="r-desc">5 shots · +2 per kill</span></li>
-      <li><span class="r-icon">💀</span><span class="r-label">Bombers</span><span class="r-desc">Kill in 5s or take the blast</span></li>
-      <li><span class="r-icon">🩸</span><span class="r-label">Survive</span><span class="r-desc">Dodge ghosts · Hunt 20+</span></li>
+      <li><span class="r-icon-badge badge-red"><span class="r-icon">🎯</span></span><span class="r-label label-red">Aim & Fire</span><span class="r-desc">Drag to aim · Tap FIRE</span></li>
+      <li><span class="r-icon-badge badge-purple"><span class="r-icon">⚡</span></span><span class="r-label label-purple">Ammo</span><span class="r-desc">5 shots · +2 per kill</span></li>
+      <li><span class="r-icon-badge badge-dark"><span class="r-icon">💀</span></span><span class="r-label label-white">Bombers</span><span class="r-desc">Kill in 5s or take the blast</span></li>
+      <li><span class="r-icon-badge badge-red"><span class="r-icon">🩸</span></span><span class="r-label label-red">Survive</span><span class="r-desc">Dodge ghosts · Hunt 20+</span></li>
     </ul>
     <div class="rules-timer" id="rules-timer-row">HUNT BEGINS IN <b id="rules-countdown">7</b>s…</div>
   </div>
