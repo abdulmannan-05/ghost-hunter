@@ -170,22 +170,35 @@
   }
   #controls-top{
     width:100%; max-width:220px;
-    display:flex; flex-direction:column; align-items:center; gap:8px;
+    display:flex; flex-direction:column; align-items:center; gap:10px;
+  }
+  /* Pause & Hunt-on-PC share one row of square icon buttons */
+  #quick-actions-row{
+    display:flex; gap:10px; justify-content:center;
   }
 
-  /* Freed up the old sensitivity slider's space to grow the primary action button.
-     Capped by dvh too, not just vw, so it can't overflow a short/chrome-shrunk viewport. */
+  /* Bigger primary action button — capped by dvh too, not just vw, so it can't
+     overflow a short/chrome-shrunk viewport (see the address-bar clipping fix). */
   #fire-btn{
-    width:min(38vw,32dvh,168px); height:min(38vw,32dvh,168px); border-radius:50%; background:var(--red);
-    box-shadow:0 8px 0 #a3131c; font-size:22px; letter-spacing:1px; margin:0; padding:0;
+    width:min(42vw,40dvh,192px); height:min(42vw,40dvh,192px); border-radius:50%; background:var(--red);
+    box-shadow:0 9px 0 #a3131c; font-size:23px; letter-spacing:1px; margin:0; padding:0;
     flex-shrink:0;
   }
-  #fire-btn:active{transform:translateY(6px); box-shadow:0 2px 0 #a3131c}
+  #fire-btn:active{transform:translateY(7px); box-shadow:0 2px 0 #a3131c}
 
   .ctrl-btn{
     width:100%; padding:10px 4px; font-size:12px; font-weight:700;
     border-radius:10px; margin:0; max-width:none; min-height:40px;
     box-shadow:0 3px 0 #05050a;
+  }
+  /* Square variant for Pause / Hunt-on-PC — icon on top, tiny caption below */
+  .ctrl-btn.square{
+    width:min(20vw,72px); height:min(20vw,72px); flex-shrink:0;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:3px; padding:6px 4px; font-size:22px; border-radius:14px;
+  }
+  .ctrl-btn.square .ctrl-label{
+    font-size:9px; font-weight:800; letter-spacing:.3px; text-transform:uppercase; line-height:1.1;
   }
 
   /* Aim readout */
@@ -234,8 +247,14 @@
       <!-- Right half: secondary controls on top, FIRE pinned to bottom -->
       <div id="controls-column">
         <div id="controls-top">
-          <button id="pause-btn" class="ctrl-btn secondary">⏸️ Pause</button>
-          <button id="pc-toggle-btn" class="ctrl-btn secondary" style="background:#1a1a2e; border:1px solid #3a3a5c;">🖥️ Hunt by PC</button>
+          <div id="quick-actions-row">
+            <button id="pause-btn" class="ctrl-btn square secondary">
+              <span class="ctrl-icon" id="pause-icon">⏸️</span><span class="ctrl-label" id="pause-label">Pause</span>
+            </button>
+            <button id="pc-toggle-btn" class="ctrl-btn square secondary" style="background:#1a1a2e; border:1px solid #3a3a5c;">
+              <span class="ctrl-icon" id="pc-toggle-icon">🖥️</span><span class="ctrl-label" id="pc-toggle-label">Hunt by PC</span>
+            </button>
+          </div>
           <div id="tilt-readout">aim: 0.00, 0.00</div>
         </div>
         <button id="fire-btn">FIRE</button>
@@ -278,6 +297,8 @@
   const joystickHint = document.getElementById("joystick-hint");
 
   const pcToggleBtn = document.getElementById("pc-toggle-btn");
+  const pcToggleIcon = document.getElementById("pc-toggle-icon");
+  const pcToggleLabel = document.getElementById("pc-toggle-label");
 
   // Phone audio & haptics
   const shootSound = new Audio("assets/audio/shoot.wav");
@@ -602,7 +623,8 @@
     if (useMouseMode) {
       if (joystickTouchId !== null) releaseJoystick();
       if (pcToggleBtn) {
-        pcToggleBtn.textContent = "📱 Hunt by Phone";
+        pcToggleIcon.textContent = "📱";
+        pcToggleLabel.textContent = "Hunt by Phone";
         pcToggleBtn.style.background = "var(--gold)";
         pcToggleBtn.style.color = "#0c0c14";
         pcToggleBtn.style.borderColor = "var(--mango)";
@@ -613,7 +635,8 @@
       send({ type: "control-mode", mode: "mouse" });
     } else {
       if (pcToggleBtn) {
-        pcToggleBtn.textContent = "🖥️ Hunt by PC";
+        pcToggleIcon.textContent = "🖥️";
+        pcToggleLabel.textContent = "Hunt by PC";
         pcToggleBtn.style.background = "#1a1a2e";
         pcToggleBtn.style.color = "#eaf4ff";
         pcToggleBtn.style.borderColor = "#3a3a5c";
@@ -641,11 +664,14 @@
   // ===================================================================
   let isPhonePaused = false;
   const pauseBtn = document.getElementById("pause-btn");
+  const pauseIcon = document.getElementById("pause-icon");
+  const pauseLabel = document.getElementById("pause-label");
 
   function resetPauseState() {
     isPhonePaused = false;
     if (pauseBtn) {
-      pauseBtn.textContent = "⏸️ Pause";
+      pauseIcon.textContent = "⏸️";
+      pauseLabel.textContent = "Pause";
       pauseBtn.style.background = "#242438";
       pauseBtn.style.color = "#eaf4ff";
     }
@@ -661,14 +687,16 @@
       isPhonePaused = !isPhonePaused;
       if (isPhonePaused) {
         send({ type: "pause" });
-        pauseBtn.textContent = "▶️ RESUME";
+        pauseIcon.textContent = "▶️";
+        pauseLabel.textContent = "Resume";
         pauseBtn.style.background = "var(--gold)";
         pauseBtn.style.color = "#0c0c14";
         fireBtn.disabled = true;
         fireBtn.style.opacity = "0.3";
       } else {
         send({ type: "resume" });
-        pauseBtn.textContent = "⏸️ Pause";
+        pauseIcon.textContent = "⏸️";
+        pauseLabel.textContent = "Pause";
         pauseBtn.style.background = "#242438";
         pauseBtn.style.color = "#eaf4ff";
         fireBtn.disabled = false;
