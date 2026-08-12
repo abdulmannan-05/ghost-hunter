@@ -483,7 +483,7 @@
         <div id="ammo-label">AMMO</div>
         <div id="ammo-display">
           <div id="ammo-bullets"></div>
-          <div id="ammo-count">×5</div>
+          <div id="ammo-count">×3</div>
         </div>
         <div id="reload-label">Reloading…</div>
       </div>
@@ -1097,6 +1097,8 @@
     rulesPreviewMode = false;
     rulesCloseBtn.style.display = "none";
     rulesTimerRow.style.display = "block";
+    renderHealthUI();
+    renderAmmoUI();
     getReadyEl.style.display = "flex";
 
     // 7-second countdown timer for rules screen
