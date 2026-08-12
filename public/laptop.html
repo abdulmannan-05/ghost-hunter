@@ -240,6 +240,17 @@
   #final-player-name{font-size:14px; color:var(--ghost); letter-spacing:2px; margin-bottom:20px}
   #game-over .hint{color:var(--ink); font-size:13px}
 
+  /* Post-game actions — shown on both Game Over and Leaderboard screens */
+  .postgame-actions{display:flex; gap:14px; justify-content:center; margin:6px 0 14px; flex-wrap:wrap}
+  .postgame-btn{
+    padding:13px 26px; border-radius:12px; border:none; cursor:pointer;
+    font-family:'Outfit','Helvetica Neue',Arial,sans-serif; font-weight:800; font-size:14px; letter-spacing:1px;
+    background:#1c1c2a; color:#eaf4ff; box-shadow:0 6px 0 #05050a; transition:transform .05s;
+  }
+  .postgame-btn:active{transform:translateY(4px); box-shadow:0 2px 0 #05050a}
+  .postgame-btn.primary{background:var(--red); color:#fff; box-shadow:0 6px 0 #a3131c}
+  .postgame-btn.primary:active{box-shadow:0 2px 0 #a3131c}
+
   /* ================ LEADERBOARD ================ */
   #leaderboard-wrap{
     position:fixed; inset:0; display:none; align-items:center; justify-content:center; flex-direction:column;
@@ -480,7 +491,11 @@
   <div id="final-score-label">Ghosts Captured</div>
   <div id="final-score-value">0</div>
   <div id="final-player-name"></div>
-  <div class="hint">Tap "PLAY AGAIN 🔄" on your phone to retry.</div>
+  <div class="postgame-actions">
+    <button class="postgame-btn primary" id="game-over-retry-btn">🔄 TRY AGAIN</button>
+    <button class="postgame-btn" id="game-over-home-btn">🏠 BACK TO HOME</button>
+  </div>
+  <div class="hint">Or tap "PLAY AGAIN 🔄" on your phone.</div>
 </div>
 
 <!-- ============ LEADERBOARD ============ -->
@@ -490,7 +505,11 @@
     <thead><tr><th class="rank-col">#</th><th class="name-col">Hunter</th><th class="score-col">Score</th></tr></thead>
     <tbody id="leaderboard-body"></tbody>
   </table>
-  <div id="lb-hint">Tap "PLAY AGAIN 🔄" on your phone to start a new hunt.</div>
+  <div class="postgame-actions">
+    <button class="postgame-btn primary" id="lb-retry-btn">🔄 TRY AGAIN</button>
+    <button class="postgame-btn" id="lb-home-btn">🏠 BACK TO HOME</button>
+  </div>
+  <div id="lb-hint">Or tap "PLAY AGAIN 🔄" on your phone.</div>
 </div>
 
 <script>
@@ -1383,6 +1402,63 @@
     soundMgr.startBgm();
     lastFrameTime = performance.now();
   }
+
+  // Return to the start screen — works whether the round was played via a paired
+  // phone or solo "Hunt on PC", and resets state so either path can be picked again.
+  function goHome() {
+    gameOverAlreadyTriggered = false;
+    if (gameOverTimeout) {
+      clearTimeout(gameOverTimeout);
+      gameOverTimeout = null;
+    }
+    gameStarted = false;
+    gameOver = false;
+    isPaused = false;
+    pcOnlyMode = false;
+    score = 0;
+    health = MAX_HEALTH;
+    ammo = START_AMMO;
+    shotsFiredSinceReload = 0;
+    reloading = false;
+    mangoReached = false;
+    playerName = "Hunter";
+    companyName = "";
+    ghosts.length = 0;
+    resetWaveSystem();
+
+    controlMode = "phone";
+    canvas.style.pointerEvents = "none";
+    canvas.style.cursor = "default";
+
+    rotateScreenEl.style.display = "none";
+    getReadyEl.style.display = "none";
+    gameWrapEl.style.display = "none";
+    gameOverEl.style.display = "none";
+    leaderboardWrapEl.style.display = "none";
+    document.getElementById("pause-overlay").style.display = "none";
+    document.getElementById("bomber-warning").classList.remove("active");
+
+    // Reset the "Hunt on PC" card back to its initial state
+    pcCardIntroEl.style.display = "";
+    pcNameFormEl.style.display = "none";
+    pcNameInputEl.value = "";
+    pcCompanyInputEl.value = "";
+    pcNameErrorEl.style.display = "none";
+    pcNameInputEl.style.borderColor = "var(--line)";
+    pcCompanyInputEl.style.borderColor = "var(--line)";
+
+    lobbyEl.style.display = "block";
+    setStatus(activeRoomCode ? "pending" : "", activeRoomCode ? `Room ${activeRoomCode} ready — waiting for phone…` : "Connecting to server…");
+  }
+
+  const gameOverRetryBtn = document.getElementById("game-over-retry-btn");
+  const gameOverHomeBtn = document.getElementById("game-over-home-btn");
+  const lbRetryBtn = document.getElementById("lb-retry-btn");
+  const lbHomeBtn = document.getElementById("lb-home-btn");
+  gameOverRetryBtn.addEventListener("click", restartGame);
+  lbRetryBtn.addEventListener("click", restartGame);
+  gameOverHomeBtn.addEventListener("click", goHome);
+  lbHomeBtn.addEventListener("click", goHome);
 
   function resizeCanvas() {
     canvas.width = window.innerWidth;
