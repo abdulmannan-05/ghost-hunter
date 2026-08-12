@@ -76,7 +76,7 @@
   #step-play{
     display:none;
     width:100vw; height:100vh; /* full screen */
-    flex-direction:row; /* landscape layout */
+    flex-direction:column; /* mini-hud on top, control row below */
     align-items:stretch;
     padding:0; margin:0;
     position:fixed; inset:0;
@@ -85,14 +85,7 @@
   }
   #step-play.active{display:flex !important}
 
-  /* LEFT COLUMN: Touchpad */
-  #touchpad-column{
-    flex:1;
-    display:flex; flex-direction:column;
-    position:relative;
-  }
-
-  /* Mini HUD bar at top of touchpad */
+  /* Mini HUD bar spans the full width at the top */
   #mini-hud{
     display:flex; gap:14px; justify-content:center; align-items:center;
     font-size:12px; color:var(--ink); letter-spacing:1px;
@@ -100,100 +93,82 @@
     padding:6px 12px; flex-shrink:0;
   }
 
-  /* Touchpad area */
-  #touchpad{
-    flex:1;
+  /* Control row: exact 50/50 split — joystick left, fire+controls right */
+  #play-body{
+    flex:1; display:flex; flex-direction:row; min-height:0;
+  }
+
+  /* LEFT HALF: Joystick zone */
+  #joystick-column{
+    flex:1 1 50%;
     position:relative;
-    background:radial-gradient(ellipse at center, rgba(99,200,255,0.04) 0%, transparent 70%);
+    background:radial-gradient(ellipse at center, rgba(99,200,255,0.05) 0%, transparent 70%);
     border-right:1px solid var(--line);
-    cursor:crosshair;
     overflow:hidden;
   }
-  #touchpad::after{
-    content:'';
-    position:absolute; top:50%; left:50%;
-    width:2px; height:2px;
-    background:rgba(99,200,255,0.3);
-    border-radius:50%;
-    box-shadow:0 0 40px 20px rgba(99,200,255,0.06);
-    transform:translate(-50%,-50%);
+  #joystick-zone{
+    position:absolute; inset:0;
+    touch-action:none;
+    display:flex; align-items:center; justify-content:center;
+    transition:opacity 0.2s;
   }
-  #touchpad-label{
-    position:absolute; bottom:8px; left:50%;
-    transform:translateX(-50%);
-    font-size:10px; color:rgba(154,160,180,0.4);
-    letter-spacing:2px; text-transform:uppercase;
-    pointer-events:none;
+  #joystick-hint{
+    font-size:13px; font-weight:700; color:rgba(154,160,180,0.55);
+    letter-spacing:2px; text-transform:uppercase; line-height:1.7;
+    pointer-events:none; text-align:center;
   }
-  /* Touch indicator dot */
-  #touch-dot{
+  /* Floating joystick base — appears wherever the thumb touches down */
+  #joystick-base{
     position:absolute;
-    width:28px; height:28px;
+    width:200px; height:200px;
     border-radius:50%;
-    border:2px solid var(--ghost);
-    background:rgba(99,200,255,0.15);
-    box-shadow:0 0 20px rgba(99,200,255,0.3);
-    transform:translate(-50%,-50%);
-    pointer-events:none;
+    background:radial-gradient(circle, rgba(99,200,255,0.10) 0%, rgba(99,200,255,0.03) 65%, transparent 100%);
+    border:2px solid rgba(99,200,255,0.4);
+    box-shadow:0 0 34px rgba(99,200,255,0.18), inset 0 0 24px rgba(99,200,255,0.1);
     display:none;
-    transition:opacity 0.15s;
-  }
-
-  /* Crosshair indicator in touchpad */
-  #touchpad-crosshair{
-    position:absolute;
-    width:10px; height:10px;
-    border:2px solid rgba(99,200,255,0.6);
-    border-radius:50%;
     transform:translate(-50%,-50%);
     pointer-events:none;
-    top:50%; left:50%;
-    box-shadow:0 0 8px rgba(99,200,255,0.3);
   }
-  #touchpad-crosshair::before,
-  #touchpad-crosshair::after{
-    content:'';
+  #joystick-knob{
     position:absolute;
-    background:rgba(99,200,255,0.4);
-  }
-  #touchpad-crosshair::before{
-    width:14px; height:1px;
-    top:50%; left:50%;
-    transform:translate(-50%,-50%);
-  }
-  #touchpad-crosshair::after{
-    width:1px; height:14px;
-    top:50%; left:50%;
-    transform:translate(-50%,-50%);
+    width:84px; height:84px;
+    left:50%; top:50%; margin-left:-42px; margin-top:-42px;
+    border-radius:50%;
+    background:radial-gradient(circle at 35% 30%, rgba(170,225,255,0.95), rgba(99,200,255,0.65) 55%, rgba(50,120,180,0.5) 100%);
+    border:2px solid rgba(255,255,255,0.55);
+    box-shadow:0 0 22px rgba(99,200,255,0.7), 0 4px 10px rgba(0,0,0,0.45);
   }
 
-  /* RIGHT COLUMN: Fire + controls */
+  /* RIGHT HALF: secondary controls on top, FIRE pinned to the bottom */
   #controls-column{
-    width:140px; flex-shrink:0;
+    flex:1 1 50%;
     display:flex; flex-direction:column;
-    align-items:center; justify-content:center;
+    align-items:center; justify-content:space-between;
     gap:10px;
-    padding:10px 8px;
+    padding:14px 12px 20px;
     background:rgba(18,18,28,0.6);
-    border-left:1px solid var(--line);
+  }
+  #controls-top{
+    width:100%; max-width:220px;
+    display:flex; flex-direction:column; align-items:center; gap:10px;
   }
 
   #fire-btn{
-    width:100px; height:100px; border-radius:50%; background:var(--red);
-    box-shadow:0 6px 0 #a3131c; font-size:18px; margin:0; padding:0;
+    width:min(34vw,144px); height:min(34vw,144px); border-radius:50%; background:var(--red);
+    box-shadow:0 7px 0 #a3131c; font-size:20px; letter-spacing:1px; margin:0; padding:0;
     flex-shrink:0;
   }
-  #fire-btn:active{transform:translateY(4px); box-shadow:0 2px 0 #a3131c}
+  #fire-btn:active{transform:translateY(5px); box-shadow:0 2px 0 #a3131c}
 
   .ctrl-btn{
-    width:100%; padding:8px 4px; font-size:11px; font-weight:700;
-    border-radius:8px; margin:0; max-width:none;
+    width:100%; padding:12px 4px; font-size:12px; font-weight:700;
+    border-radius:10px; margin:0; max-width:none; min-height:44px;
     box-shadow:0 3px 0 #05050a;
   }
 
   /* Sensitivity row */
   #sens-row{
-    width:100%; padding:4px 6px;
+    width:100%; padding:6px 8px;
     background:var(--panel); border:1px solid var(--line); border-radius:8px;
   }
   #sens-row label{font-size:10px; color:var(--ink); display:block; margin-bottom:2px}
@@ -224,33 +199,36 @@
     <button id="name-btn">START HUNTING 🎯</button>
   </div>
 
-  <!-- STEP: PLAY (landscape touchpad controller) -->
+  <!-- STEP: PLAY (landscape joystick controller) -->
   <div id="step-play">
-    <!-- Left: Touchpad -->
-    <div id="touchpad-column">
-      <div id="mini-hud">
-        <div id="mango-badge">🥭 TARGET REACHED!</div>
-        <span>❤️ <b id="mini-health" style="color:#4ade80">100</b></span>
-        <span>🔫 <b id="mini-ammo" style="color:var(--ghost)">5</b></span>
-        <span>👻 <b id="mini-score" style="color:var(--gold)">0</b></span>
-      </div>
-      <div id="touchpad">
-        <div id="touch-dot"></div>
-        <div id="touchpad-crosshair"></div>
-        <div id="touchpad-label">Drag to aim</div>
-      </div>
+    <div id="mini-hud">
+      <div id="mango-badge">🥭 TARGET REACHED!</div>
+      <span>❤️ <b id="mini-health" style="color:#4ade80">100</b></span>
+      <span>🔫 <b id="mini-ammo" style="color:var(--ghost)">5</b></span>
+      <span>👻 <b id="mini-score" style="color:var(--gold)">0</b></span>
     </div>
-
-    <!-- Right: Fire + Controls -->
-    <div id="controls-column">
-      <button id="fire-btn">FIRE</button>
-      <button id="pause-btn" class="ctrl-btn secondary">⏸️ Pause</button>
-      <button id="pc-toggle-btn" class="ctrl-btn secondary" style="background:#1a1a2e; border:1px solid #3a3a5c;">🖥️ Hunt by PC</button>
-      <div id="sens-row">
-        <label>Sensitivity <span id="sens-val">1.5x</span></label>
-        <input type="range" id="sens-slider" min="0.5" max="4.0" step="0.1" value="1.5">
+    <div id="play-body">
+      <!-- Left half: floating joystick -->
+      <div id="joystick-column">
+        <div id="joystick-zone">
+          <div id="joystick-hint">🕹️<br>TOUCH & DRAG<br>TO AIM</div>
+          <div id="joystick-base"><div id="joystick-knob"></div></div>
+        </div>
       </div>
-      <div id="tilt-readout">aim: 0.00, 0.00</div>
+
+      <!-- Right half: secondary controls on top, FIRE pinned to bottom -->
+      <div id="controls-column">
+        <div id="controls-top">
+          <button id="pause-btn" class="ctrl-btn secondary">⏸️ Pause</button>
+          <button id="pc-toggle-btn" class="ctrl-btn secondary" style="background:#1a1a2e; border:1px solid #3a3a5c;">🖥️ Hunt by PC</button>
+          <div id="sens-row">
+            <label>Sensitivity <span id="sens-val">1.5x</span></label>
+            <input type="range" id="sens-slider" min="0.5" max="4.0" step="0.1" value="1.5">
+          </div>
+          <div id="tilt-readout">aim: 0.00, 0.00</div>
+        </div>
+        <button id="fire-btn">FIRE</button>
+      </div>
     </div>
   </div>
 
@@ -285,9 +263,10 @@
   const miniScoreEl = document.getElementById("mini-score");
   const mangoBadge = document.getElementById("mango-badge");
   const gameoverTitle = document.getElementById("gameover-title");
-  const touchpad = document.getElementById("touchpad");
-  const touchDot = document.getElementById("touch-dot");
-  const touchpadCrosshair = document.getElementById("touchpad-crosshair");
+  const joystickZone = document.getElementById("joystick-zone");
+  const joystickBase = document.getElementById("joystick-base");
+  const joystickKnob = document.getElementById("joystick-knob");
+  const joystickHint = document.getElementById("joystick-hint");
 
   const pcToggleBtn = document.getElementById("pc-toggle-btn");
 
@@ -488,43 +467,64 @@
   });
 
   // ===================================================================
-  // TOUCHPAD AIM CONTROL (multi-touch aware)
+  // VIRTUAL JOYSTICK AIM CONTROL (floating joystick, multi-touch aware)
   // ===================================================================
-  // Track the touchpad finger by its unique Touch.identifier so that
-  // a second finger can tap FIRE (or any button) at the same time.
+  // Touch anywhere in the left half and a joystick appears right under
+  // your thumb — no need to find a precise spot. Drag to aim; release
+  // and it springs back to center (crosshair recenters too).
 
   let aimX = 0, aimY = 0;
-  let touchpadTouchId = null; // identifier of the finger on the touchpad
+  let joystickTouchId = null; // identifier of the finger driving the joystick
+  let joystickBaseClientX = 0, joystickBaseClientY = 0;
   let lastAimSendTime = 0;
+  const JOYSTICK_RADIUS = 100; // must match #joystick-base half-width in CSS
 
-  function getTouchAim(touch) {
-    const rect = touchpad.getBoundingClientRect();
-    const relX = (touch.clientX - rect.left) / rect.width;
-    const relY = (touch.clientY - rect.top) / rect.height;
-    let x = (relX * 2 - 1) * userSensitivity;
-    let y = (relY * 2 - 1) * userSensitivity;
-    x = Math.max(-1, Math.min(1, x));
-    y = Math.max(-1, Math.min(1, y));
-    return { x, y };
+  function showJoystickAt(clientX, clientY) {
+    const zoneRect = joystickZone.getBoundingClientRect();
+    // Clamp so the base circle always fully fits inside the zone
+    const localX = Math.max(JOYSTICK_RADIUS, Math.min(zoneRect.width - JOYSTICK_RADIUS, clientX - zoneRect.left));
+    const localY = Math.max(JOYSTICK_RADIUS, Math.min(zoneRect.height - JOYSTICK_RADIUS, clientY - zoneRect.top));
+    joystickBaseClientX = zoneRect.left + localX;
+    joystickBaseClientY = zoneRect.top + localY;
+    joystickBase.style.left = localX + "px";
+    joystickBase.style.top = localY + "px";
+    joystickKnob.style.transition = "none";
+    joystickKnob.style.transform = "translate(0px, 0px)";
+    joystickBase.style.display = "block";
+    joystickHint.style.display = "none";
   }
 
-  function updateTouchDot(touch) {
-    const rect = touchpad.getBoundingClientRect();
-    touchDot.style.left = (touch.clientX - rect.left) + "px";
-    touchDot.style.top = (touch.clientY - rect.top) + "px";
-    touchDot.style.display = "block";
+  function updateJoystick(clientX, clientY) {
+    const dx = clientX - joystickBaseClientX;
+    const dy = clientY - joystickBaseClientY;
+    const dist = Math.min(JOYSTICK_RADIUS, Math.hypot(dx, dy));
+    const angle = Math.atan2(dy, dx);
+    const knobX = Math.cos(angle) * dist;
+    const knobY = Math.sin(angle) * dist;
+    joystickKnob.style.transform = `translate(${knobX}px, ${knobY}px)`;
+
+    aimX = Math.max(-1, Math.min(1, (knobX / JOYSTICK_RADIUS) * userSensitivity));
+    aimY = Math.max(-1, Math.min(1, (knobY / JOYSTICK_RADIUS) * userSensitivity));
+    sendAim();
   }
 
-  function updateCrosshairIndicator() {
-    const pctX = (aimX + 1) / 2 * 100;
-    const pctY = (aimY + 1) / 2 * 100;
-    touchpadCrosshair.style.left = pctX + "%";
-    touchpadCrosshair.style.top = pctY + "%";
+  function releaseJoystick() {
+    joystickTouchId = null;
+    aimX = 0; aimY = 0;
+    sendAim(true); // force immediate send so the crosshair snaps back to center
+    tiltReadout.textContent = "aim: 0.00, 0.00";
+    joystickKnob.style.transition = "transform 150ms ease-out";
+    joystickKnob.style.transform = "translate(0px, 0px)";
+    setTimeout(() => {
+      joystickBase.style.display = "none";
+      joystickKnob.style.transition = "none";
+      if (!useMouseMode) joystickHint.style.display = "block";
+    }, 150);
   }
 
-  function sendAim() {
+  function sendAim(force) {
     const now = performance.now();
-    if (now - lastAimSendTime > 25) {
+    if (force || now - lastAimSendTime > 25) {
       lastAimSendTime = now;
       const sx = Math.round(aimX * 1000) / 1000;
       const sy = Math.round(aimY * 1000) / 1000;
@@ -541,51 +541,41 @@
     return null;
   }
 
-  touchpad.addEventListener("touchstart", (e) => {
+  joystickZone.addEventListener("touchstart", (e) => {
     e.preventDefault();
     if (useMouseMode) return; // ignore phone touch aim in mouse mode
-    // Only claim the first finger that lands on the touchpad
-    if (touchpadTouchId === null) {
+    // Only claim the first finger that lands in the joystick zone
+    if (joystickTouchId === null) {
       const touch = e.changedTouches[0];
-      touchpadTouchId = touch.identifier;
-      const aim = getTouchAim(touch);
-      aimX = aim.x;
-      aimY = aim.y;
-      updateTouchDot(touch);
-      updateCrosshairIndicator();
-      sendAim();
+      joystickTouchId = touch.identifier;
+      showJoystickAt(touch.clientX, touch.clientY);
+      updateJoystick(touch.clientX, touch.clientY);
+      if (navigator.vibrate) navigator.vibrate(10);
     }
   }, { passive: false });
 
-  touchpad.addEventListener("touchmove", (e) => {
+  joystickZone.addEventListener("touchmove", (e) => {
     e.preventDefault();
-    if (useMouseMode || touchpadTouchId === null) return;
-    const touch = findTouch(e.touches, touchpadTouchId);
+    if (useMouseMode || joystickTouchId === null) return;
+    const touch = findTouch(e.touches, joystickTouchId);
     if (!touch) return;
-    const aim = getTouchAim(touch);
-    aimX = aim.x;
-    aimY = aim.y;
-    updateTouchDot(touch);
-    updateCrosshairIndicator();
-    sendAim();
+    updateJoystick(touch.clientX, touch.clientY);
   }, { passive: false });
 
-  touchpad.addEventListener("touchend", (e) => {
+  joystickZone.addEventListener("touchend", (e) => {
     e.preventDefault();
     for (let i = 0; i < e.changedTouches.length; i++) {
-      if (e.changedTouches[i].identifier === touchpadTouchId) {
-        touchpadTouchId = null;
-        touchDot.style.display = "none";
+      if (e.changedTouches[i].identifier === joystickTouchId) {
+        releaseJoystick();
         break;
       }
     }
   }, { passive: false });
 
-  touchpad.addEventListener("touchcancel", (e) => {
+  joystickZone.addEventListener("touchcancel", (e) => {
     for (let i = 0; i < e.changedTouches.length; i++) {
-      if (e.changedTouches[i].identifier === touchpadTouchId) {
-        touchpadTouchId = null;
-        touchDot.style.display = "none";
+      if (e.changedTouches[i].identifier === joystickTouchId) {
+        releaseJoystick();
         break;
       }
     }
@@ -601,9 +591,9 @@
     lastToggleTime = now;
 
     useMouseMode = !useMouseMode;
-    const touchpadLabel = touchpad.querySelector("#touchpad-label");
 
     if (useMouseMode) {
+      if (joystickTouchId !== null) releaseJoystick();
       if (pcToggleBtn) {
         pcToggleBtn.textContent = "📱 Hunt by Phone";
         pcToggleBtn.style.background = "var(--gold)";
@@ -611,8 +601,8 @@
         pcToggleBtn.style.borderColor = "var(--mango)";
       }
       tiltReadout.textContent = "🖱️ PC Mouse Aim Active";
-      if (touchpadLabel) touchpadLabel.textContent = "Controlled by PC Mouse 🖱️";
-      touchpad.style.opacity = "0.45";
+      joystickHint.innerHTML = "Controlled by<br>PC Mouse 🖱️";
+      joystickZone.style.opacity = "0.4";
       send({ type: "control-mode", mode: "mouse" });
     } else {
       if (pcToggleBtn) {
@@ -622,8 +612,8 @@
         pcToggleBtn.style.borderColor = "#3a3a5c";
       }
       tiltReadout.textContent = "aim: 0.00, 0.00";
-      if (touchpadLabel) touchpadLabel.textContent = "Drag to aim";
-      touchpad.style.opacity = "1";
+      joystickHint.innerHTML = "🕹️<br>TOUCH & DRAG<br>TO AIM";
+      joystickZone.style.opacity = "1";
       send({ type: "control-mode", mode: "phone" });
     }
   }
@@ -701,7 +691,7 @@
 
   fireBtn.addEventListener("touchstart", (e) => {
     e.preventDefault(); // prevent click + ghost click
-    e.stopPropagation(); // don't let touchpad grab this touch
+    e.stopPropagation(); // don't let the joystick zone grab this touch
     doFire();
   }, { passive: false });
 
@@ -717,9 +707,13 @@
     miniAmmoEl.textContent = "5";
     miniAmmoEl.style.color = "var(--ghost)";
     miniScoreEl.textContent = "0";
+    joystickTouchId = null;
     aimX = 0;
     aimY = 0;
-    updateCrosshairIndicator();
+    joystickBase.style.display = "none";
+    joystickKnob.style.transition = "none";
+    joystickKnob.style.transform = "translate(0px, 0px)";
+    if (!useMouseMode) joystickHint.style.display = "block";
     stepGameover.classList.add("hidden");
     stepPlay.classList.add("active");
   });
@@ -728,11 +722,11 @@
   // FORCE LANDSCAPE HINT (on portrait screens)
   // ===================================================================
   function checkOrientation() {
-    if (!stepPlay.classList.contains("active")) return;
+    if (!stepPlay.classList.contains("active") || useMouseMode) return;
     if (window.innerWidth < window.innerHeight && window.innerWidth < 500) {
-      touchpad.querySelector("#touchpad-label").textContent = "↻ Rotate phone to landscape";
+      joystickHint.innerHTML = "↻<br>ROTATE PHONE<br>TO LANDSCAPE";
     } else {
-      touchpad.querySelector("#touchpad-label").textContent = "Drag to aim";
+      joystickHint.innerHTML = "🕹️<br>TOUCH & DRAG<br>TO AIM";
     }
   }
   window.addEventListener("resize", checkOrientation);
