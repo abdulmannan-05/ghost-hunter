@@ -1,0 +1,9 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "ghost-hunter",
+      "url": "http://localhost:3000"
+    }
+  ]
+}
