@@ -332,8 +332,9 @@
         miniHealthEl.style.color = msg.health <= 30 ? "var(--red)" : (msg.health <= 60 ? "#f5c542" : "#4ade80");
       }
       if (typeof msg.ammo === "number") {
-        miniAmmoEl.textContent = msg.reloading ? "⏳" : msg.ammo;
-        miniAmmoEl.style.color = msg.reloading ? "var(--red)" : "var(--ghost)";
+        const clips = typeof msg.clips === "number" ? msg.clips : Math.ceil(Math.max(0, msg.ammo) / 2);
+        miniAmmoEl.textContent = msg.reloading ? "⏳" : clips;
+        miniAmmoEl.style.color = msg.reloading ? "var(--red)" : (clips <= 1 ? "var(--red)" : "var(--ghost)");
       }
       if (typeof msg.score === "number") {
         miniScoreEl.textContent = msg.score;

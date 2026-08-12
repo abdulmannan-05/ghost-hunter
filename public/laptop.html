@@ -1274,7 +1274,7 @@
 
   function renderAmmoUI() {
     // Two fixed bullet sprites show the clip (shots left before a forced reload);
-    // the number next to them is the real total ammo pool.
+    // the number next to them represents the number of magazines/reloads remaining (2 bullets per clip).
     ammoBulletsEl.innerHTML = "";
     const clipFilled = Math.max(0, Math.min(2 - shotsFiredSinceReload, ammo, 2));
     for (let i = 0; i < 2; i++) {
@@ -1282,8 +1282,9 @@
       b.className = "bullet" + (i < clipFilled ? " filled" : "");
       ammoBulletsEl.appendChild(b);
     }
-    ammoCountEl.textContent = "×" + Math.max(0, ammo);
-    ammoCountEl.classList.toggle("low", ammo <= 2);
+    const clipsRemaining = Math.ceil(Math.max(0, ammo) / 2);
+    ammoCountEl.textContent = "×" + clipsRemaining;
+    ammoCountEl.classList.toggle("low", clipsRemaining <= 1);
 
     if (reloading) {
       reloadLabelEl.textContent = "RELOADING...";
@@ -1294,7 +1295,7 @@
     } else {
       reloadLabelEl.classList.remove("show");
     }
-    sendToPhone({ type: "state", ammo, reloading });
+    sendToPhone({ type: "state", ammo, clips: clipsRemaining, reloading });
   }
 
   let lastHealthPushTime = 0;
