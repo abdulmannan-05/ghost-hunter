@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>Ghost Hunter — Controller</title>
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;700;800&display=swap" rel="stylesheet">
 <style>
@@ -78,7 +78,9 @@
     width:100vw; height:100vh; /* full screen */
     flex-direction:column; /* mini-hud on top, control row below */
     align-items:stretch;
-    padding:0; margin:0;
+    /* Keep controls clear of notches & the home-indicator gesture bar in landscape */
+    padding:0 env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    margin:0;
     position:fixed; inset:0;
     background:var(--bg);
     z-index:100;
@@ -139,13 +141,13 @@
     box-shadow:0 0 22px rgba(99,200,255,0.7), 0 4px 10px rgba(0,0,0,0.45);
   }
 
-  /* RIGHT HALF: secondary controls on top, FIRE pinned to the bottom */
+  /* RIGHT HALF: secondary controls on top, FIRE comfortably below (not glued to the edge) */
   #controls-column{
     flex:1 1 50%;
     display:flex; flex-direction:column;
-    align-items:center; justify-content:space-between;
-    gap:10px;
-    padding:14px 12px 20px;
+    align-items:center; justify-content:center;
+    gap:clamp(20px, 5vh, 40px);
+    padding:14px 12px calc(14px + env(safe-area-inset-bottom));
     background:rgba(18,18,28,0.6);
   }
   #controls-top{
@@ -153,27 +155,19 @@
     display:flex; flex-direction:column; align-items:center; gap:10px;
   }
 
+  /* Freed up the old sensitivity slider's space to grow the primary action button */
   #fire-btn{
-    width:min(34vw,144px); height:min(34vw,144px); border-radius:50%; background:var(--red);
-    box-shadow:0 7px 0 #a3131c; font-size:20px; letter-spacing:1px; margin:0; padding:0;
+    width:min(40vw,168px); height:min(40vw,168px); border-radius:50%; background:var(--red);
+    box-shadow:0 8px 0 #a3131c; font-size:22px; letter-spacing:1px; margin:0; padding:0;
     flex-shrink:0;
   }
-  #fire-btn:active{transform:translateY(5px); box-shadow:0 2px 0 #a3131c}
+  #fire-btn:active{transform:translateY(6px); box-shadow:0 2px 0 #a3131c}
 
   .ctrl-btn{
     width:100%; padding:12px 4px; font-size:12px; font-weight:700;
     border-radius:10px; margin:0; max-width:none; min-height:44px;
     box-shadow:0 3px 0 #05050a;
   }
-
-  /* Sensitivity row */
-  #sens-row{
-    width:100%; padding:6px 8px;
-    background:var(--panel); border:1px solid var(--line); border-radius:8px;
-  }
-  #sens-row label{font-size:10px; color:var(--ink); display:block; margin-bottom:2px}
-  #sens-slider{width:100%; margin:0}
-  #sens-val{font-size:10px; color:var(--ghost); font-weight:bold}
 
   /* Aim readout */
   #tilt-readout{
@@ -221,10 +215,6 @@
         <div id="controls-top">
           <button id="pause-btn" class="ctrl-btn secondary">⏸️ Pause</button>
           <button id="pc-toggle-btn" class="ctrl-btn secondary" style="background:#1a1a2e; border:1px solid #3a3a5c;">🖥️ Hunt by PC</button>
-          <div id="sens-row">
-            <label>Sensitivity <span id="sens-val">1.5x</span></label>
-            <input type="range" id="sens-slider" min="0.5" max="4.0" step="0.1" value="1.5">
-          </div>
           <div id="tilt-readout">aim: 0.00, 0.00</div>
         </div>
         <button id="fire-btn">FIRE</button>
@@ -255,8 +245,6 @@
   const fireBtn = document.getElementById("fire-btn");
   const playAgainBtn = document.getElementById("play-again-btn");
   const tiltReadout = document.getElementById("tilt-readout");
-  const sensSlider = document.getElementById("sens-slider");
-  const sensVal = document.getElementById("sens-val");
   const finalScoreEl = document.getElementById("final-score");
   const miniHealthEl = document.getElementById("mini-health");
   const miniAmmoEl = document.getElementById("mini-ammo");
@@ -275,15 +263,10 @@
   shootSound.preload = "auto";
   shootSound.volume = 0.6;
 
-  let userSensitivity = 1.5;
+  const AIM_SENSITIVITY = 1.6; // fixed — tuned for a comfortable full-range joystick throw
   let playerName = "Hunter";
   let companyName = "";
   let useMouseMode = false;
-
-  sensSlider.addEventListener("input", (e) => {
-    userSensitivity = parseFloat(e.target.value);
-    sensVal.textContent = userSensitivity.toFixed(1) + "x";
-  });
 
   function setStatus(state, text) {
     statusDot.className = state;
@@ -503,8 +486,8 @@
     const knobY = Math.sin(angle) * dist;
     joystickKnob.style.transform = `translate(${knobX}px, ${knobY}px)`;
 
-    aimX = Math.max(-1, Math.min(1, (knobX / JOYSTICK_RADIUS) * userSensitivity));
-    aimY = Math.max(-1, Math.min(1, (knobY / JOYSTICK_RADIUS) * userSensitivity));
+    aimX = Math.max(-1, Math.min(1, (knobX / JOYSTICK_RADIUS) * AIM_SENSITIVITY));
+    aimY = Math.max(-1, Math.min(1, (knobY / JOYSTICK_RADIUS) * AIM_SENSITIVITY));
     sendAim();
   }
 

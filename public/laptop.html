@@ -23,9 +23,21 @@
 
   /* ================ LOBBY ================ */
   #lobby{
-    max-width:430px; width:100%; text-align:center; padding:12px;
-    margin-top:165px; z-index:10; position:relative;
+    max-width:760px; width:100%; text-align:center; padding:12px;
+    margin-top:130px; z-index:10; position:relative;
   }
+  .mango-banner{
+    display:inline-flex; align-items:center; gap:8px;
+    background:linear-gradient(135deg, rgba(255,179,71,0.18), rgba(255,111,0,0.12));
+    border:1px solid rgba(255,179,71,0.45); border-radius:999px;
+    padding:9px 24px; margin-bottom:16px;
+    font-family:'Orbitron',sans-serif; font-size:13px; font-weight:800; letter-spacing:1.5px;
+    color:#ffd166; text-shadow:0 0 14px rgba(255,179,71,0.6);
+    box-shadow:0 0 30px rgba(255,179,71,0.15);
+  }
+  .mango-banner b{color:#fff; font-size:15px}
+  .lobby-grid{display:flex; gap:14px; align-items:stretch; justify-content:center}
+  .lobby-grid .card{flex:1; min-width:0}
   .card{
     background:rgba(12,12,20,0.82); border:1px solid rgba(99,200,255,0.25); border-radius:18px;
     padding:16px 20px; width:100%; backdrop-filter:blur(16px);
@@ -47,6 +59,34 @@
     text-shadow:0 0 20px rgba(99,200,255,.5); margin:2px 0 6px}
   .hint{font-size:11px; color:rgba(234,244,255,0.75); line-height:1.5}
   .hint code{background:rgba(255,255,255,.1); padding:2px 6px; border-radius:4px; font-size:10px; color:var(--ghost)}
+
+  /* PC-only path — play without a phone */
+  .pc-card{display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px}
+  .pc-icon{font-size:32px}
+  .pc-card-title{font-family:'Orbitron',sans-serif; font-size:13px; font-weight:800; letter-spacing:1.5px; color:#eaf4ff; text-transform:uppercase}
+  .pc-card-sub{font-size:11px; color:rgba(234,244,255,0.7); line-height:1.4; max-width:220px}
+  #hunt-pc-btn{
+    margin-top:6px; padding:12px 26px; border-radius:12px; border:none; cursor:pointer;
+    background:linear-gradient(135deg,#63c8ff,#3f86d6); color:#0c0c14;
+    font-family:'Outfit',sans-serif; font-weight:800; font-size:14px; letter-spacing:1px;
+    box-shadow:0 6px 0 #2c5f96; transition:transform .05s;
+  }
+  #hunt-pc-btn:active{transform:translateY(4px); box-shadow:0 2px 0 #2c5f96}
+  #pc-name-form{display:flex; flex-direction:column; align-items:center; gap:10px; width:100%}
+  #pc-name-input, #pc-company-input{
+    font-size:14px; font-weight:700; text-align:center; letter-spacing:.5px;
+    background:rgba(8,8,14,.6); color:#eaf4ff; border:2px solid var(--line);
+    border-radius:10px; padding:11px 14px; width:100%; max-width:230px;
+    outline:none; transition:border-color 200ms; font-family:'Outfit',sans-serif;
+  }
+  #pc-name-input:focus, #pc-company-input:focus{border-color:var(--ghost)}
+  #pc-name-error{color:var(--red); font-size:11px; display:none}
+  #pc-start-btn{
+    padding:12px 26px; border-radius:12px; border:none; cursor:pointer;
+    background:var(--red); color:#fff; font-family:'Outfit',sans-serif; font-weight:800;
+    font-size:14px; letter-spacing:1px; box-shadow:0 6px 0 #a3131c; transition:transform .05s;
+  }
+  #pc-start-btn:active{transform:translateY(4px); box-shadow:0 2px 0 #a3131c}
 
   /* ================ GET READY / RULES (Gamified HUD) ================ */
   #get-ready{
@@ -335,11 +375,30 @@
 
 <!-- ============ LOBBY ============ -->
 <div id="lobby">
-  <div class="card">
-    <div id="status-line"><span id="status-dot"></span><span id="status-text">Connecting to server…</span></div>
-    <div id="qr-box"><div id="qrcode"></div></div>
-    <div id="room-code">----</div>
-    <div class="hint">Scan with phone camera or open <code id="phone-url">…</code> on phone.</div>
+  <div class="mango-banner">🥭 KILL <b>20</b> GHOSTS TO WIN A MANGO</div>
+  <div class="lobby-grid">
+    <div class="card">
+      <div id="status-line"><span id="status-dot"></span><span id="status-text">Connecting to server…</span></div>
+      <div id="qr-box"><div id="qrcode"></div></div>
+      <div id="room-code">----</div>
+      <div class="hint">Scan with phone camera or open <code id="phone-url">…</code> on phone.</div>
+    </div>
+    <div class="card pc-card">
+      <div id="pc-card-intro">
+        <div class="pc-icon">🖥️</div>
+        <div class="pc-card-title">No Phone?</div>
+        <div class="pc-card-sub">Play right here on this PC with your keyboard &amp; mouse.</div>
+        <button id="hunt-pc-btn">🖥️ HUNT ON PC</button>
+      </div>
+      <div id="pc-name-form" style="display:none;">
+        <div class="pc-card-title">🖥️ Continue On PC</div>
+        <div class="pc-card-sub">Enter your details to join the hunt:</div>
+        <input type="text" id="pc-name-input" placeholder="Person Name" autocomplete="off" spellcheck="false">
+        <input type="text" id="pc-company-input" placeholder="Company Name" autocomplete="off" spellcheck="false">
+        <div id="pc-name-error"></div>
+        <button id="pc-start-btn">START HUNTING 🎯</button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -363,7 +422,7 @@
       <li><span class="r-icon">🎯</span><span class="r-label">Aim & Fire</span><span class="r-desc">Drag to aim · Tap FIRE</span></li>
       <li><span class="r-icon">⚡</span><span class="r-label">Ammo</span><span class="r-desc">5 shots · +2 per kill</span></li>
       <li><span class="r-icon">💀</span><span class="r-label">Bombers</span><span class="r-desc">Kill in 5s or take the blast</span></li>
-      <li><span class="r-icon">🩸</span><span class="r-label">Survive</span><span class="r-desc">Dodge ghosts · Hunt 10+</span></li>
+      <li><span class="r-icon">🩸</span><span class="r-label">Survive</span><span class="r-desc">Dodge ghosts · Hunt 20+</span></li>
     </ul>
     <div class="rules-timer" id="rules-timer-row">HUNT BEGINS IN <b id="rules-countdown">7</b>s…</div>
   </div>
@@ -382,7 +441,7 @@
         <div id="score-label">CAPTURED</div>
         <div id="score-value">0</div>
         <div id="score-separator"></div>
-        <div id="target-hint"><span class="icon">🥭</span> TARGET 10</div>
+        <div id="target-hint"><span class="icon">🥭</span> TARGET 20</div>
       </div>
     </div>
 
@@ -766,6 +825,7 @@
   let gameStarted = false;
   let playerName = "Hunter";
   let companyName = "";
+  let pcOnlyMode = false; // true once "Hunt on PC" is committed — ignore any later phone pairing
 
   function getFullHunterName() {
     return companyName ? `${playerName} (${companyName})` : playerName;
@@ -797,6 +857,7 @@
     }
 
     if (msg.type === "paired") {
+      if (pcOnlyMode) return; // already hunting solo on this PC — ignore a late phone join
       setStatus("ok", "Phone paired!");
       lobbyEl.style.display = "none";
       rotateScreenEl.style.display = "flex";
@@ -806,6 +867,7 @@
     }
 
     if (msg.type === "peer-disconnected" && msg.who === "phone") {
+      if (pcOnlyMode) return;
       rotateScreenEl.style.display = "none";
       lobbyEl.style.display = "block";
       setStatus("pending", "Phone disconnected — waiting to reconnect…");
@@ -930,6 +992,57 @@
     startHttpFallback();
   }
 
+  // ===================================================================
+  // HUNT ON PC — solo path, no phone required
+  // ===================================================================
+  const huntPcBtn = document.getElementById("hunt-pc-btn");
+  const pcCardIntroEl = document.getElementById("pc-card-intro");
+  const pcNameFormEl = document.getElementById("pc-name-form");
+  const pcNameInputEl = document.getElementById("pc-name-input");
+  const pcCompanyInputEl = document.getElementById("pc-company-input");
+  const pcNameErrorEl = document.getElementById("pc-name-error");
+  const pcStartBtn = document.getElementById("pc-start-btn");
+
+  huntPcBtn.addEventListener("click", () => {
+    soundMgr.unlock();
+    pcCardIntroEl.style.display = "none";
+    pcNameFormEl.style.display = "flex";
+    pcNameInputEl.focus();
+  });
+
+  function clearPcNameError() {
+    if ((pcNameInputEl.value || "").trim() && (pcCompanyInputEl.value || "").trim()) {
+      pcNameErrorEl.style.display = "none";
+      pcNameInputEl.style.borderColor = "var(--line)";
+      pcCompanyInputEl.style.borderColor = "var(--line)";
+    }
+  }
+  pcNameInputEl.addEventListener("input", clearPcNameError);
+  pcCompanyInputEl.addEventListener("input", clearPcNameError);
+  pcNameInputEl.addEventListener("keydown", (e) => { if (e.key === "Enter") pcCompanyInputEl.focus(); });
+  pcCompanyInputEl.addEventListener("keydown", (e) => { if (e.key === "Enter") pcStartBtn.click(); });
+
+  pcStartBtn.addEventListener("click", () => {
+    const valName = (pcNameInputEl.value || "").trim();
+    const valCompany = (pcCompanyInputEl.value || "").trim();
+
+    if (!valName || !valCompany) {
+      if (!valName) pcNameInputEl.style.borderColor = "var(--red)";
+      if (!valCompany) pcCompanyInputEl.style.borderColor = "var(--red)";
+      pcNameErrorEl.textContent = "⚠️ Please enter both Person Name & Company Name!";
+      pcNameErrorEl.style.display = "block";
+      (!valName ? pcNameInputEl : pcCompanyInputEl).focus();
+      return;
+    }
+
+    pcOnlyMode = true;
+    soundMgr.unlock();
+    // Reuse the exact same pipeline a phone controller drives — just triggered locally.
+    handleServerMessage({ type: "set-name", name: valName, company: valCompany });
+    handleServerMessage({ type: "control-mode", mode: "mouse" });
+    handleServerMessage({ type: "start-game" });
+  });
+
   function startSequence() {
     gameStarted = true;
     soundMgr.unlock();
@@ -978,7 +1091,7 @@
   const leaderboardBodyEl = document.getElementById("leaderboard-body");
   const leaderboard = [];
 
-  const MANGO_TARGET = 10;
+  const MANGO_TARGET = 20;
 
   function getApiUrl(endpoint) {
     if (location.protocol === "http:" || location.protocol === "https:") {
