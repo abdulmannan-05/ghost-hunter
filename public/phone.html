@@ -75,7 +75,8 @@
   /* ---------- LANDSCAPE GAME VIEW ---------- */
   #step-play{
     display:none;
-    width:100vw; height:100vh; /* full screen */
+    width:100vw; height:100vh; /* fallback for browsers without dvh support */
+    width:100dvw; height:100dvh; /* real visible viewport — excludes the browser's address-bar chrome */
     flex-direction:column; /* mini-hud on top, control row below */
     align-items:stretch;
     /* Keep controls clear of notches & the home-indicator gesture bar in landscape */
@@ -114,7 +115,23 @@
     display:flex; align-items:center; justify-content:center;
     transition:opacity 0.2s;
   }
+  /* Static "home" ring — gives the resting zone a visible anchor instead of empty black space */
+  @keyframes joystickRingPulse{
+    0%,100%{opacity:.32; transform:translate(-50%,-50%) scale(1)}
+    50%{opacity:.55; transform:translate(-50%,-50%) scale(1.04)}
+  }
+  #joystick-zone::before{
+    content:'';
+    position:absolute; top:50%; left:50%;
+    width:min(48vw,46dvh,210px); height:min(48vw,46dvh,210px);
+    border-radius:50%;
+    border:2px dashed rgba(99,200,255,0.22);
+    pointer-events:none;
+    animation:joystickRingPulse 2.6s ease-in-out infinite;
+  }
+  #joystick-zone.engaged::before{opacity:0; animation:none; transition:opacity .15s}
   #joystick-hint{
+    position:relative;
     font-size:13px; font-weight:700; color:rgba(154,160,180,0.55);
     letter-spacing:2px; text-transform:uppercase; line-height:1.7;
     pointer-events:none; text-align:center;
@@ -146,26 +163,28 @@
     flex:1 1 50%;
     display:flex; flex-direction:column;
     align-items:center; justify-content:center;
-    gap:clamp(20px, 5vh, 40px);
-    padding:14px 12px calc(14px + env(safe-area-inset-bottom));
+    gap:clamp(14px, 4dvh, 32px);
+    padding:10px 12px calc(10px + env(safe-area-inset-bottom));
     background:rgba(18,18,28,0.6);
+    min-height:0;
   }
   #controls-top{
     width:100%; max-width:220px;
-    display:flex; flex-direction:column; align-items:center; gap:10px;
+    display:flex; flex-direction:column; align-items:center; gap:8px;
   }
 
-  /* Freed up the old sensitivity slider's space to grow the primary action button */
+  /* Freed up the old sensitivity slider's space to grow the primary action button.
+     Capped by dvh too, not just vw, so it can't overflow a short/chrome-shrunk viewport. */
   #fire-btn{
-    width:min(40vw,168px); height:min(40vw,168px); border-radius:50%; background:var(--red);
+    width:min(38vw,32dvh,168px); height:min(38vw,32dvh,168px); border-radius:50%; background:var(--red);
     box-shadow:0 8px 0 #a3131c; font-size:22px; letter-spacing:1px; margin:0; padding:0;
     flex-shrink:0;
   }
   #fire-btn:active{transform:translateY(6px); box-shadow:0 2px 0 #a3131c}
 
   .ctrl-btn{
-    width:100%; padding:12px 4px; font-size:12px; font-weight:700;
-    border-radius:10px; margin:0; max-width:none; min-height:44px;
+    width:100%; padding:10px 4px; font-size:12px; font-weight:700;
+    border-radius:10px; margin:0; max-width:none; min-height:40px;
     box-shadow:0 3px 0 #05050a;
   }
 
@@ -173,6 +192,8 @@
   #tilt-readout{
     font-family:monospace; font-size:10px; color:var(--ink);
     text-align:center; width:100%;
+    background:rgba(0,0,0,0.25); border:1px solid var(--line); border-radius:8px;
+    padding:5px 8px;
   }
 </style>
 </head>
@@ -475,6 +496,7 @@
     joystickKnob.style.transform = "translate(0px, 0px)";
     joystickBase.style.display = "block";
     joystickHint.style.display = "none";
+    joystickZone.classList.add("engaged");
   }
 
   function updateJoystick(clientX, clientY) {
@@ -501,6 +523,7 @@
     setTimeout(() => {
       joystickBase.style.display = "none";
       joystickKnob.style.transition = "none";
+      joystickZone.classList.remove("engaged");
       if (!useMouseMode) joystickHint.style.display = "block";
     }, 150);
   }
