@@ -296,9 +296,6 @@
 <div id="lobby">
   <div class="card">
     <div id="status-line"><span id="status-dot"></span><span id="status-text">Connecting to server…</span></div>
-    <div id="rotate-hint" style="display:none; margin:8px auto 12px; padding:8px 14px; background:rgba(255,193,7,0.18); border:1px solid rgba(255,193,7,0.5); border-radius:10px; color:#ffd166; font-size:13px; font-weight:700; letter-spacing:0.5px; text-shadow:0 0 10px rgba(255,193,7,0.4);">
-      📱 Phone paired! 🔄 Please rotate your phone to landscape mode
-    </div>
     <div id="qr-box"><div id="qrcode"></div></div>
     <div id="room-code">----</div>
     <div class="hint">Scan with phone camera or open <code id="phone-url">…</code> on phone.</div>
@@ -728,9 +725,7 @@
     }
 
     if (msg.type === "paired") {
-      setStatus("ok", "📱 Phone paired! Please rotate your phone to landscape mode 🔄");
-      const rotateHintEl = document.getElementById("rotate-hint");
-      if (rotateHintEl) rotateHintEl.style.display = "block";
+      setStatus("ok", "Phone paired! Please rotate your phone");
       soundMgr.unlock();
       soundMgr.startBgm();
       return;
@@ -738,8 +733,6 @@
 
     if (msg.type === "peer-disconnected" && msg.who === "phone") {
       setStatus("pending", "Phone disconnected — waiting to reconnect…");
-      const rotateHintEl = document.getElementById("rotate-hint");
-      if (rotateHintEl) rotateHintEl.style.display = "none";
       return;
     }
 
