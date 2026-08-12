@@ -4,13 +4,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Ghost Hunter — Event Edition</title>
-<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;700;800&family=Orbitron:wght@700;800;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;700;800&family=Creepster&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <style>
   :root{
     --bg:#07070c; --panel:#12121c; --line:#2a2a3d;
     --ghost:#63c8ff; --red:#ff2530; --ok:#4ade80; --ink:#9aa0b4;
-    --gold:#ffd166; --mango:#ffb347;
+    --gold:#ffd166; --mango:#ffb347; --occult:#8b5cf6;
   }
   *{box-sizing:border-box; margin:0; padding:0}
   html,body{height:100%; overflow:hidden}
@@ -26,16 +26,20 @@
     max-width:760px; width:100%; text-align:center; padding:12px;
     margin-top:130px; z-index:10; position:relative;
   }
+  @keyframes bannerFlicker{
+    0%,100%{box-shadow:0 0 26px rgba(255,179,71,0.18)}
+    50%{box-shadow:0 0 44px rgba(255,179,71,0.34)}
+  }
   .mango-banner{
     display:inline-flex; align-items:center; gap:8px;
-    background:linear-gradient(135deg, rgba(255,179,71,0.18), rgba(255,111,0,0.12));
-    border:1px solid rgba(255,179,71,0.45); border-radius:999px;
-    padding:9px 24px; margin-bottom:16px;
-    font-family:'Orbitron',sans-serif; font-size:13px; font-weight:800; letter-spacing:1.5px;
-    color:#ffd166; text-shadow:0 0 14px rgba(255,179,71,0.6);
-    box-shadow:0 0 30px rgba(255,179,71,0.15);
+    background:linear-gradient(135deg, rgba(255,179,71,0.2), rgba(139,92,246,0.12));
+    border:1px solid rgba(255,179,71,0.5); border-radius:999px;
+    padding:10px 26px; margin-bottom:16px;
+    font-family:'Creepster',cursive; font-weight:400; font-size:17px; letter-spacing:1px;
+    color:#ffd166; text-shadow:0 0 16px rgba(255,179,71,0.7);
+    animation:bannerFlicker 3s ease-in-out infinite;
   }
-  .mango-banner b{color:#fff; font-size:15px}
+  .mango-banner b{color:#fff; font-size:20px}
   .lobby-grid{display:flex; gap:14px; align-items:stretch; justify-content:center}
   .lobby-grid .card{flex:1; min-width:0}
   .card{
@@ -63,15 +67,15 @@
   /* PC-only path — play without a phone */
   .pc-card{display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px}
   .pc-icon{font-size:32px}
-  .pc-card-title{font-family:'Orbitron',sans-serif; font-size:13px; font-weight:800; letter-spacing:1.5px; color:#eaf4ff; text-transform:uppercase}
+  .pc-card-title{font-family:'Creepster',cursive; font-weight:400; font-size:16px; letter-spacing:1px; color:#eaf4ff; text-transform:uppercase}
   .pc-card-sub{font-size:11px; color:rgba(234,244,255,0.7); line-height:1.4; max-width:220px}
   #hunt-pc-btn{
     margin-top:6px; padding:12px 26px; border-radius:12px; border:none; cursor:pointer;
-    background:linear-gradient(135deg,#63c8ff,#3f86d6); color:#0c0c14;
+    background:linear-gradient(135deg,#63c8ff,#8b5cf6); color:#0c0c14;
     font-family:'Outfit',sans-serif; font-weight:800; font-size:14px; letter-spacing:1px;
-    box-shadow:0 6px 0 #2c5f96; transition:transform .05s;
+    box-shadow:0 6px 0 #4c3d8f; transition:transform .05s;
   }
-  #hunt-pc-btn:active{transform:translateY(4px); box-shadow:0 2px 0 #2c5f96}
+  #hunt-pc-btn:active{transform:translateY(4px); box-shadow:0 2px 0 #4c3d8f}
   #pc-name-form{display:flex; flex-direction:column; align-items:center; gap:10px; width:100%}
   #pc-name-input, #pc-company-input{
     font-size:14px; font-weight:700; text-align:center; letter-spacing:.5px;
@@ -95,8 +99,8 @@
     z-index:30; padding:20px; backdrop-filter:blur(14px);
   }
   @keyframes rulesGlow{
-    0%,100%{box-shadow:0 0 60px rgba(255,37,48,0.35), inset 0 0 30px rgba(255,37,48,0.12)}
-    50%{box-shadow:0 0 95px rgba(255,37,48,0.6), inset 0 0 40px rgba(255,37,48,0.22)}
+    0%,100%{box-shadow:0 0 60px rgba(255,37,48,0.32), 0 0 110px rgba(139,92,246,0.14), inset 0 0 30px rgba(255,37,48,0.12)}
+    50%{box-shadow:0 0 92px rgba(255,37,48,0.55), 0 0 140px rgba(139,92,246,0.24), inset 0 0 40px rgba(255,37,48,0.2)}
   }
   @keyframes rulesNumPulse{
     0%,100%{transform:scale(1)}
@@ -113,18 +117,24 @@
     color:var(--ink); font-size:22px; cursor:pointer; line-height:1; padding:0; transition:color 0.15s, border-color 0.15s;
   }
   .rules-close-btn:hover{color:#fff; border-color:var(--ghost)}
-  .rules-card .player-tag{font-family:'Orbitron',sans-serif; font-size:11px; letter-spacing:3px; color:var(--ghost); text-transform:uppercase; margin-bottom:8px}
-  .rules-card h2{font-family:'Orbitron',sans-serif; font-size:28px; font-weight:900; letter-spacing:4px; color:#ff2530; text-shadow:0 0 24px rgba(255,37,48,0.85); margin-bottom:20px}
+  .rules-card .player-tag{font-family:'Outfit',sans-serif; font-weight:800; font-size:11px; letter-spacing:3px; color:var(--ghost); text-transform:uppercase; margin-bottom:8px}
+  .rules-card h2{
+    font-family:'Creepster',cursive; font-weight:400; font-size:36px; letter-spacing:1.5px;
+    background:linear-gradient(135deg,#ff2530 20%,#ff6b6b 55%,var(--occult) 100%);
+    -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
+    text-shadow:0 0 26px rgba(255,37,48,0.55);
+    margin-bottom:20px;
+  }
   .rules-list{list-style:none; display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:22px}
   .rules-list li{
     display:flex; flex-direction:column; align-items:center; gap:5px; text-align:center;
-    background:rgba(99,200,255,0.07); border:1px solid rgba(99,200,255,0.2); border-radius:14px;
+    background:rgba(255,150,60,0.06); border:1px solid rgba(255,180,80,0.22); border-radius:14px;
     padding:14px 10px;
   }
-  .rules-list li .r-icon{font-size:26px; filter:drop-shadow(0 0 8px rgba(99,200,255,0.6))}
-  .rules-list li .r-label{font-family:'Orbitron',sans-serif; font-size:12px; font-weight:800; letter-spacing:1.5px; color:#ffd166; text-transform:uppercase}
+  .rules-list li .r-icon{font-size:26px; filter:drop-shadow(0 0 8px rgba(255,180,80,0.65))}
+  .rules-list li .r-label{font-family:'Outfit',sans-serif; font-weight:800; font-size:12px; letter-spacing:1.5px; color:#ffd166; text-transform:uppercase}
   .rules-list li .r-desc{font-size:12px; line-height:1.35; color:rgba(234,244,255,0.85)}
-  .rules-timer{font-family:'Orbitron',sans-serif; font-size:13px; font-weight:800; letter-spacing:2px; color:var(--ghost); text-transform:uppercase; text-shadow:0 0 10px rgba(99,200,255,0.5)}
+  .rules-timer{font-family:'Outfit',sans-serif; font-weight:800; font-size:13px; letter-spacing:2px; color:var(--ghost); text-transform:uppercase; text-shadow:0 0 10px rgba(99,200,255,0.5)}
   .rules-timer b{display:inline-block; color:#ff2530; font-size:26px; text-shadow:0 0 16px rgba(255,37,48,0.85); animation:rulesNumPulse 1s ease-in-out infinite}
 
   /* ================ GAME ================ */
@@ -855,6 +865,7 @@
   let useHttpFallback = false;
   let httpPollTimer = null;
   let gameStarted = false;
+  let combatActive = false; // true only once the rules countdown finishes — gates ghost spawns, damage & firing
   let playerName = "Hunter";
   let companyName = "";
   let pcOnlyMode = false; // true once "Hunt on PC" is committed — ignore any later phone pairing
@@ -1112,6 +1123,7 @@
       renderAmmoUI();
       resetWaveSystem();
       lastFrameTime = performance.now();
+      combatActive = true; // ghosts, damage & firing only begin now — not while rules were still on screen
       requestAnimationFrame(loop);
     }, 7000);
   }
@@ -1408,6 +1420,7 @@
     initFog();
     soundMgr.startBgm();
     lastFrameTime = performance.now();
+    combatActive = true; // restart skips the rules screen, so combat resumes immediately
   }
 
   // Return to the start screen — works whether the round was played via a paired
@@ -1419,6 +1432,7 @@
       gameOverTimeout = null;
     }
     gameStarted = false;
+    combatActive = false;
     gameOver = false;
     isPaused = false;
     pcOnlyMode = false;
@@ -2211,7 +2225,7 @@
   // FIRE HANDLER WITH IMPACT FEEDBACK
   // ===================================================================
   function handleFire() {
-    if (gameOver || reloading || isPaused) return;
+    if (!combatActive || gameOver || reloading || isPaused) return;
 
     if (ammo <= 0) {
       renderAmmoUI();
@@ -2427,7 +2441,7 @@
       updateLobbyGhosts(dt);
       lobbyGhosts.forEach(drawGhost);
     } else {
-      if (!gameOver && !isPaused) {
+      if (!gameOver && !isPaused && combatActive) {
         trySpawnWave(dt);
         updateGhosts(dt);
         damageFlashEl.style.opacity = health < MAX_HEALTH * 0.3 ? 0.35 : 0;
