@@ -361,8 +361,8 @@
   }
   .settings-card {
     background: var(--panel); border: 1px solid var(--line);
-    border-radius: 16px; padding: 24px 28px; width: 340px;
-    box-shadow: 0 20px 50px rgba(0,0,0,0.8); text-align: left;
+    border-radius: 16px; padding: 24px 28px; width: 440px; max-width: 90vw;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.8); text-align: left; box-sizing: border-box;
   }
   .settings-header {
     display: flex; justify-content: space-between; align-items: center;
@@ -376,7 +376,7 @@
   .close-btn:hover { color: #fff; }
   .settings-row {
     display: flex; justify-content: space-between; align-items: center;
-    margin-bottom: 16px;
+    margin-bottom: 16px; gap: 12px;
   }
   .settings-label { font-size: 14px; font-weight: 700; color: #eaf4ff; }
   .settings-sub { font-size: 11px; color: var(--ink); margin-top: 2px; }
@@ -384,7 +384,7 @@
     background: var(--ghost); color: #0c0c14; font-weight: 800; font-size: 13px;
     border: none; border-radius: 10px; padding: 10px 18px; cursor: pointer;
     letter-spacing: 0.5px; transition: background 0.2s, transform 0.1s;
-    font-family: inherit; width: 130px; text-align: center;
+    font-family: inherit; width: 130px; text-align: center; flex-shrink: 0;
   }
   #sound-toggle-btn.muted {
     background: #333348; color: var(--ink);
@@ -393,7 +393,14 @@
     background: #242438; color: #eaf4ff; font-weight: 800; font-size: 13px;
     border: 1px solid var(--line); border-radius: 10px; padding: 10px 18px; cursor: pointer;
     letter-spacing: 0.5px; transition: background 0.2s, border-color 0.2s;
-    font-family: inherit; width: 130px; text-align: center; text-decoration: none; display: inline-block;
+    font-family: inherit; width: 130px; text-align: center; text-decoration: none;
+    display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
+    box-sizing: border-box;
+  }
+  .settings-btn-sm {
+    width: auto !important;
+    min-width: 90px;
+    padding: 10px 14px;
   }
   .settings-btn:hover { border-color: var(--ghost); background: #2c2c44; }
 </style>
@@ -429,9 +436,9 @@
         <div class="settings-label">Leaderboard</div>
         <div class="settings-sub">Export or clear all records</div>
       </div>
-      <div style="display:flex; gap:8px;">
-        <a id="download-csv-btn" class="settings-btn" href="/api/download-csv" download="Ghost_Hunter_Leaderboard.csv">📥 CSV</a>
-        <button id="clear-data-btn" class="settings-btn" style="background:rgba(255,68,68,0.2); border-color:#ff4444; color:#ff4444; cursor:pointer;">🗑️ CLEAR</button>
+      <div style="display:flex; gap:8px; flex-shrink:0;">
+        <a id="download-csv-btn" class="settings-btn settings-btn-sm" href="/api/download-csv" download="Ghost_Hunter_Leaderboard.csv">📥 CSV</a>
+        <button id="clear-data-btn" class="settings-btn settings-btn-sm" style="background:rgba(255,68,68,0.2); border-color:#ff4444; color:#ff4444; cursor:pointer;">🗑️ CLEAR</button>
       </div>
     </div>
   </div>
