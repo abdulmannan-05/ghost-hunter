@@ -182,6 +182,33 @@ app.get("/api/leaderboard", async (req, res) => {
     }
 });
 
+async function clearAllScoresInDb() {
+    if (pgPool) {
+        await pgPool.query("TRUNCATE TABLE scores RESTART IDENTITY;");
+    } else if (sqliteDb) {
+        sqliteDb.prepare("DELETE FROM scores").run();
+        try {
+            sqliteDb.prepare("DELETE FROM sqlite_sequence WHERE name='scores'").run();
+        } catch (e) {}
+    }
+    try {
+        const csvHeader = "Timestamp,Player Name,Company,Score,Result\n";
+        fs.writeFileSync(CSV_PATH, csvHeader, "utf8");
+    } catch (csvErr) {}
+}
+
+// ALL /api/clear-records — clear all scores from database (PostgreSQL/SQLite) and CSV
+app.all("/api/clear-records", async (req, res) => {
+    try {
+        await clearAllScoresInDb();
+        console.log("[DB] All scores cleared successfully via /api/clear-records.");
+        res.json({ ok: true, message: "All leaderboard records have been cleared from PostgreSQL/SQLite and CSV." });
+    } catch (err) {
+        console.error("[DB] Error clearing records via API:", err);
+        res.status(500).json({ error: "Failed to clear records: " + err.message });
+    }
+});
+
 // GET /api/download-csv — download ALL games played from database as CSV file
 app.get("/api/download-csv", async (req, res) => {
     try {

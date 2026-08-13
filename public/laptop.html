@@ -427,9 +427,12 @@
     <div class="settings-row" style="margin-bottom:0;">
       <div>
         <div class="settings-label">Leaderboard</div>
-        <div class="settings-sub">Export all scores as CSV</div>
+        <div class="settings-sub">Export or clear all records</div>
       </div>
-      <a id="download-csv-btn" class="settings-btn" href="/api/download-csv" download="Ghost_Hunter_Leaderboard.csv">📥 CSV</a>
+      <div style="display:flex; gap:8px;">
+        <a id="download-csv-btn" class="settings-btn" href="/api/download-csv" download="Ghost_Hunter_Leaderboard.csv">📥 CSV</a>
+        <button id="clear-data-btn" class="settings-btn" style="background:rgba(255,68,68,0.2); border-color:#ff4444; color:#ff4444; cursor:pointer;">🗑️ CLEAR</button>
+      </div>
     </div>
   </div>
 </div>
@@ -1230,6 +1233,24 @@
         renderLeaderboard(highlightName, highlightScore);
       });
   }
+
+  document.getElementById("clear-data-btn")?.addEventListener("click", async () => {
+    if (confirm("Are you sure you want to clear all leaderboard records? This will permanently delete all scores from PostgreSQL / database.")) {
+      try {
+        const res = await fetch("/api/clear-records", { method: "POST" });
+        const data = await res.json();
+        if (data.ok) {
+          alert("Leaderboard records cleared successfully!");
+          leaderboard.length = 0;
+          renderLeaderboard();
+        } else {
+          alert("Error: " + (data.error || "Failed to clear records"));
+        }
+      } catch (err) {
+        alert("Error clearing records: " + err.message);
+      }
+    }
+  });
 
   function renderLeaderboard(highlightName, highlightScore) {
     leaderboardBodyEl.innerHTML = "";

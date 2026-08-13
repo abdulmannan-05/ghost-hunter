@@ -6,7 +6,7 @@ const Database = require("better-sqlite3");
 const DB_DIR = path.join(__dirname, "public", "database");
 const CSV_PATH = path.join(DB_DIR, "Ghost_Hunter-Leaderboard - Sheet1.csv");
 const DB_PATH = path.join(DB_DIR, "ghost_hunter.db");
-const DATABASE_URL = process.env.DATABASE_URL || process.env.POSTGRES_URL;
+const DATABASE_URL = process.env.DATABASE_URL || process.env.POSTGRES_URL || process.argv[2];
 
 async function clearRecords() {
     console.log("Starting database and record cleanup...");
