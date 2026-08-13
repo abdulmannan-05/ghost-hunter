@@ -4,7 +4,8 @@
     "description": "Phase 0 - relay server + pairing skeleton for Ghost Hunter",
     "main": "server.js",
     "scripts": {
-        "start": "node server.js"
+        "start": "node server.js",
+        "clear-records": "node clear-records.js"
     },
     "dependencies": {
         "better-sqlite3": "^13.0.3",
